@@ -5,14 +5,12 @@
 #'
 #' @param url url to your LLM provider
 #' @param key api-key of your service
-#' @param model the model to use, by default `NULL`
 #'
 #' @export
 #'
 set_llm <- function(url = NULL, key = NULL) {
   if (!is.null(url) & !is.null(key)) {
-    config_content <- sprintf('
-default:
+    config_content <- sprintf('default:
   LLM_URL: "%s"
   LLM_key: "%s"
 ', url, key)
@@ -30,42 +28,42 @@ default:
 #' 
 #' This function send message to LLM model and retrive the result.
 #'
-#' @param message the message to send.
-#' @param model char, LLM model to use.
-#' @param max_tokens max tokens be sent
-#' @param temperature GPT style randomness control (0~1), by default 0.01, the larger, the more rigorous.
+#' @param .message the message to send.
+#' @param .model char, LLM model to use.
+#' @param .max_tokens max tokens be sent
+#' @param .temperature GPT style randomness control (0~1), by default 0.01, the larger, the more rigorous.
 #'
 #' @returns LLM answer
 #' @export
 #'
 #' @examples
-#' ask_llm("tell a joke.")
-ask_llm <- function(
-  message,
-  model = NULL,
-  temperature = 0.01,
-  max_tokens = 1E4
+#' chat_llm("tell a joke.")
+chat_llm <- function(
+  .message,
+  .model = NULL,
+  .temperature = 0.01,
+  .max_tokens = 1000
 ) {
 
   # 根据set_LLM中的设置构建chat config
   if (file.exists("~/.LLMJOIN.yml")) {
     LLMJOIN_CONFIG <- config::get(file = "~/.LLMJOIN.yml", use_parent = FALSE)
   } else {
-    stop("No LLM settings detected, please setup LLM service using `set_llm()`.")
+    stop("No LLM service detected, please setup LLM service using `set_llm()`.")
   }
 
   config <- list(
     url = LLMJOIN_CONFIG$LLM_URL,
-    model = ifelse(is.null(model), "gpt-4.1-nano", model),
+    model = ifelse(is.null(.model), "gpt-4.1-mini", .model),
     auth_header = paste("Bearer", LLMJOIN_CONFIG$LLM_key)
   )
 
   # 构建http request
   body <- list(
     model = config$model,
-    messages = list(list(role = "user", content = message)),
-    temperature = temperature,
-    max_tokens = max_tokens
+    messages = list(list(role = "user", content = .message)),
+    temperature = .temperature,
+    max_tokens = .max_tokens
   )
 
   headers <- add_headers(

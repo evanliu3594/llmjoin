@@ -1,7 +1,7 @@
 Package: llmjoin
 Type: Package
-Title: Fuzzyjoin with LLM powered
-Version: 0.1.0
+Title: Fuzzyjoin with LLM-powered
+Version: 0.2.0
 Authors@R: c(
     person(
       "Yifan", "LIU",

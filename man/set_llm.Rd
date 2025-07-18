@@ -10,8 +10,6 @@ set_llm(url = NULL, key = NULL)
 \item{url}{url to your LLM provider}
 
 \item{key}{api-key of your service}
-
-\item{model}{the model to use, by default `NULL`}
 }
 \description{
 Set up your LLM service (of course you can use your local ollama).
