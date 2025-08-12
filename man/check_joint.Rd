@@ -4,12 +4,12 @@
 \alias{check_joint}
 \title{ask LLM to check if the built joint is correct.}
 \usage{
-check_joint(.joint, model = NULL)
+check_joint(.joint, ...)
 }
 \arguments{
 \item{.joint}{2-column data.frame, the built joint.}
 
-\item{model}{the LLM model to use}
+\item{...}{extra params passed to `chat_llm()`}
 }
 \description{
 ask LLM to check if the built joint is correct.

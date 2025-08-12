@@ -1,7 +1,7 @@
 Package: llmjoin
 Type: Package
 Title: Fuzzyjoin with LLM-powered
-Version: 0.2.0
+Version: 0.2.1
 Authors@R: c(
     person(
       "Yifan", "LIU",
@@ -25,3 +25,5 @@ Imports:
     config
 Depends: 
     R (>= 4.2.0)
+Suggests:
+    testthat (>= 3.0.0)

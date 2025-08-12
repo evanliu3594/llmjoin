@@ -4,7 +4,7 @@
 \alias{llm_join}
 \title{Fuzzy join with LLM}
 \usage{
-llm_join(x, y, key1, key2, model = NULL)
+llm_join(x, y, key1, key2, ...)
 }
 \arguments{
 \item{x}{a `data.frame` to be join on the lhs.}
@@ -15,7 +15,7 @@ llm_join(x, y, key1, key2, model = NULL)
 
 \item{key2}{string, name of the key column of data.frame `y` waiting for paring.}
 
-\item{model}{the LLM model to use}
+\item{...}{extra params passed to `chat_llm()`}
 }
 \value{
 the Fuzzy-joined `data.frame`

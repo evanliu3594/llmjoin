@@ -4,7 +4,7 @@
 \alias{chat_llm}
 \title{Send message to LLM server}
 \usage{
-chat_llm(.message, .model = "gpt-4.1-nano", .temperature = 0.1)
+chat_llm(.message, .model = "gpt-4.1-mini", .temperature = 0.1)
 }
 \arguments{
 \item{.message}{the message to send.}

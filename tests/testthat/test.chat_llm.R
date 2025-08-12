@@ -1,0 +1,1 @@
+test_that("llmjoin", chat_llm("hi"))

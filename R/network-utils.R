@@ -39,7 +39,7 @@ set_llm <- function(url = NULL, key = NULL) {
 #' chat_llm("tell a joke.")
 chat_llm <- function(
   .message,
-  .model = "gpt-4.1-nano",
+  .model = "gpt-4.1-mini",
   .temperature = 0.1
 ) {
 

@@ -67,7 +67,7 @@ joint_prompt <- function(x, y) {
 #' @param y a `data.frame` to be join on the rhs.
 #' @param key1 string, name of the key column of data.frame `x` waiting for paring.
 #' @param key2 string, name of the key column of data.frame `y` waiting for paring.
-#' @param model the LLM model to use.
+#' @param ... extra params passed to `chat_llm()`
 #'
 #' @returns the Fuzzy-joined `data.frame`
 #' @export
@@ -80,18 +80,18 @@ joint_prompt <- function(x, y) {
 #'     key1 = "x", key2 = "y"
 #'   )
 #' }
-build_joint <- function(x, y, key1, key2, model = NULL) {
+build_joint <- function(x, y, key1, key2, ...) {
   llm_response <- joint_prompt(unique(x[key1]), unique(y[key2])) %>%
-    chat_llm(.model = model)
+    chat_llm(...)
   
   gsub("```|csv", "", llm_response) %>% read_csv()
 }
 
 #' ask LLM to check if the built joint is correct.
 #' @param .joint 2-column data.frame, the built joint.
-#' @param model the LLM model to use
+#' @param ... extra params passed to `chat_llm()`
 #' @export
-check_joint <- function(.joint, model = NULL) {
+check_joint <- function(.joint, ...) {
   
   llm_response <- paste0(
     "Below are some phrases for judgment. ",
@@ -99,7 +99,7 @@ check_joint <- function(.joint, model = NULL) {
     "filter them out, and return only the problematic phrases. ",
     "Do not include any unexpected information: \n\n",
     paste0(.joint[[1]], " is equal to ", .joint[[2]], ",\n") %>% paste0(collapse = "")
-  ) %>% chat_llm()
+  ) %>% chat_llm(...)
 
   err_rows <- strsplit(llm_response, " is equal to ") %>% do.call(rbind, .) %>% 
     .[,1] %>% paste(collapse = "|")
@@ -113,7 +113,7 @@ check_joint <- function(.joint, model = NULL) {
 #' @param y a `data.frame` to be join on the rhs.
 #' @param key1 string, name of the key column of data.frame `x` waiting for paring.
 #' @param key2 string, name of the key column of data.frame `y` waiting for paring.
-#' @param model the LLM model to use
+#' @param ... extra params passed to `chat_llm()`
 #' 
 #' @returns the Fuzzy-joined `data.frame`
 #' @export
@@ -125,9 +125,9 @@ check_joint <- function(.joint, model = NULL) {
 #' 
 #'   llm_join(x, y, key1 = "id", key2 = "month", model = "gpt-4.1-mini")
 #' }
-llm_join <- function(x, y, key1, key2, model = NULL) {
+llm_join <- function(x, y, key1, key2, ...) {
 
-  joint <- build_joint(x, y, key1, key2, model = model) %>% check_joint()
+  joint <- build_joint(x, y, key1, key2, ...) %>% check_joint(...)
 
   Reduce(\(x, y) left_join(x, y), list(x, joint, y)) %>% return()
 
