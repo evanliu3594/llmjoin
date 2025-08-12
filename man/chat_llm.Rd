@@ -4,19 +4,17 @@
 \alias{chat_llm}
 \title{Send message to LLM server}
 \usage{
-chat_llm(.message, .model = NULL, .temperature = 0.01, .max_tokens = 1000)
+chat_llm(.message, .model = "gpt-4.1-nano", .temperature = 0.1)
 }
 \arguments{
 \item{.message}{the message to send.}
 
-\item{.model}{char, LLM model to use.}
+\item{.model}{character, LLM model to use. By default gpt-4.1-nano.}
 
-\item{.temperature}{GPT style randomness control (0~1), by default 0.01, the larger, the more rigorous.}
-
-\item{.max_tokens}{max tokens be sent}
+\item{.temperature}{GPT style randomness control (0~1), by default 0.1, the larger, the more rigorous.}
 }
 \value{
-LLM answer
+LLM answer, strings
 }
 \description{
 This function send message to LLM model and retrive the result.

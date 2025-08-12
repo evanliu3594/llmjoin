@@ -10,16 +10,16 @@
 #'
 set_llm <- function(url = NULL, key = NULL) {
   if (!is.null(url) & !is.null(key)) {
-    config_content <- sprintf('default:
-  LLM_URL: "%s"
-  LLM_key: "%s"
-', url, key)
+    config_content <- sprintf('default:\n  LLM_URL: "%s"\n  LLM_key: "%s"', url, key)
 
     writeLines(config_content, "~/.LLMJOIN.yml")
+    cat("LLM services stored in `~/.LLMJOIN.yml`. \n")
   }
 
-  if (file.exists("~/.LLMJOIN.yml")) {
-    cat("LLM services successfully setup.")
+  cat("Testing service...\n")
+  responce <- chat_llm(.message = "This is a connection test. If you receive this message, please reply with 'Yes'")
+  if (responce == "Yes") {
+    cat("LLM service configured successfully!")
   }
 
 }
@@ -29,20 +29,18 @@ set_llm <- function(url = NULL, key = NULL) {
 #' This function send message to LLM model and retrive the result.
 #'
 #' @param .message the message to send.
-#' @param .model char, LLM model to use.
-#' @param .max_tokens max tokens be sent
-#' @param .temperature GPT style randomness control (0~1), by default 0.01, the larger, the more rigorous.
+#' @param .model character, LLM model to use. By default gpt-4.1-nano.
+#' @param .temperature GPT style randomness control (0~1), by default 0.1, the larger, the more rigorous.
 #'
-#' @returns LLM answer
+#' @returns LLM answer, strings
 #' @export
 #'
 #' @examples
 #' chat_llm("tell a joke.")
 chat_llm <- function(
   .message,
-  .model = NULL,
-  .temperature = 0.01,
-  .max_tokens = 1000
+  .model = "gpt-4.1-nano",
+  .temperature = 0.1
 ) {
 
   # 根据set_LLM中的设置构建chat config
@@ -54,7 +52,7 @@ chat_llm <- function(
 
   config <- list(
     url = LLMJOIN_CONFIG$LLM_URL,
-    model = ifelse(is.null(.model), "gpt-4.1-mini", .model),
+    model = .model,
     auth_header = paste("Bearer", LLMJOIN_CONFIG$LLM_key)
   )
 
@@ -62,8 +60,7 @@ chat_llm <- function(
   body <- list(
     model = config$model,
     messages = list(list(role = "user", content = .message)),
-    temperature = .temperature,
-    max_tokens = .max_tokens
+    temperature = .temperature
   )
 
   headers <- add_headers(
@@ -81,8 +78,7 @@ chat_llm <- function(
 
   # 处理响应
   if (status_code(response) == 200) {
-    content <- fromJSON(content(response, "text"))
-    
+    content <- fromJSON(content(response, "text"))    
     return(content$choices$message$content)
 
   } else {
