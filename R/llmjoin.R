@@ -33,7 +33,7 @@ tbl2md <- function(tbl, nm = NULL) {
 #' Generate connector prompt
 #'
 #' Generate a prompt to guide the LLM in generating a joint for dataframe joinning, leveraging the two key columns from the tables to be connected.
-#' By far(2025/04/10), DeepSeek R1 and GPT-4o showed the best result, other LLMs might fabricate non-existing data in the result.
+#' By far(2025/04/10), DeepSeek R1 and gpt-4.1-mini showed the best result, other LLMs might fabricate non-existing data in the result.
 #' @param x 1-column `data.frame` or vector of characters, left hand side of the join
 #' @param y 1-column `data.frame` or vector of characters, right hand side of the join
 #'
@@ -101,8 +101,9 @@ check_joint <- function(.joint, ...) {
     paste0(.joint[[1]], " is equal to ", .joint[[2]], ",\n") %>% paste0(collapse = "")
   ) %>% chat_llm(...)
 
-  err_rows <- strsplit(llm_response, " is equal to ") %>% do.call(rbind, .) %>% 
-    .[,1] %>% paste(collapse = "|")
+  err_mtx <- strsplit(llm_response, " is equal to ") %>% do.call(rbind, .) 
+  
+  err_rows <- err_mtx[,1] %>% paste(collapse = "|")
 
   .joint[!grepl(err_rows, .joint[[1]]),]
 }

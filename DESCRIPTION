@@ -25,5 +25,3 @@ Imports:
     config
 Depends: 
     R (>= 4.2.0)
-Suggests:
-    testthat (>= 3.0.0)
