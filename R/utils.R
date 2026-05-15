@@ -13,8 +13,6 @@
 #' @return The result of calling `rhs(lhs)`.
 NULL
 
-#' @importFrom readr read_csv clipboard
-#' @importFrom dplyr left_join filter
 #' @importFrom httr add_headers POST status_code content
 #' @importFrom jsonlite fromJSON toJSON
 NULL

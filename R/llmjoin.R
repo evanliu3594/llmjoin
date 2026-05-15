@@ -94,7 +94,7 @@ build_joint <- function(x, y, key1, key2, ...) {
   csv_text <- gsub("```\\w*\\n?|\\n?```", "", llm_response)
 
   tryCatch(
-    read_csv(csv_text),
+    read.csv(text = csv_text, stringsAsFactors = FALSE),
     error = \(e) stop(
       "Failed to parse LLM response as CSV.\n",
       "Error: ", e$message, "\n",
@@ -150,7 +150,7 @@ llm_join <- function(x, y, key1, key2, check = FALSE, ...) {
   joint <- build_joint(x, y, key1, key2, ...)
   if (check) joint <- check_joint(joint, ...)
 
-  Reduce(\(x, y) left_join(x, y), list(x, joint, y)) %>% return()
+  Reduce(\(x, y) merge(x, y, all.x = TRUE), list(x, joint, y))
 
 }
 

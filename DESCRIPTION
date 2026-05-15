@@ -14,14 +14,10 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.3.3
-Imports: 
-    dplyr,
+Imports:
     httr,
     jsonlite,
     magrittr,
-    readr,
-    tidyr,
-    tidyselect,
     config
 Depends: 
     R (>= 4.2.0)
