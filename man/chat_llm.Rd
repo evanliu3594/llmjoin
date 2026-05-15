@@ -10,7 +10,8 @@ chat_llm(
   .temperature = 0,
   .max_tokens = 1000,
   .timeout = 30,
-  .verbose = getOption("llmjoin.verbose", FALSE)
+  .verbose = getOption("llmjoin.verbose", FALSE),
+  .thinking = TRUE
 )
 }
 \arguments{
@@ -22,9 +23,12 @@ chat_llm(
 
 \item{.max_tokens}{Max tokens to spend.}
 
-\item{.timeout}{Max seconds to communicate with LLM}
+\item{.timeout}{Max seconds to communicate with LLM.}
 
 \item{.verbose}{logical, print progress messages. Default \code{getOption("llmjoin.verbose", FALSE)}.}
+
+\item{.thinking}{logical, enable extended thinking/reasoning for models that support it.
+Default TRUE. Set to FALSE if the model does not support thinking and returns an error.}
 }
 \value{
 LLM answer, strings
@@ -33,5 +37,7 @@ LLM answer, strings
 This function send message to LLM model and retrive the result.
 }
 \examples{
+\dontrun{
 chat_llm("tell a joke.")
+}
 }

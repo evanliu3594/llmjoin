@@ -5,21 +5,33 @@
     base_url = "https://api.openai.com/v1",
     endpoint = "/chat/completions",
     default_model = "gpt-4.1-nano",
-    auth_type = "bearer"
+    auth_type = "bearer",
+    thinking = list(
+      body_param = "reasoning_effort",
+      body_value = "high"
+    )
   ),
   claude = list(
     name = "claude",
     base_url = "https://api.anthropic.com/v1",
     endpoint = "/messages",
     default_model = "claude-haiku-4-5-20251001",
-    auth_type = "x-api-key"
+    auth_type = "x-api-key",
+    thinking = list(
+      body_param = "thinking",
+      body_value = list(type = "enabled", budget_tokens = 16000)
+    )
   ),
   gemini = list(
     name = "gemini",
     base_url = "https://generativelanguage.googleapis.com/v1beta/openai",
     endpoint = "/chat/completions",
     default_model = "gemini-2.5-flash",
-    auth_type = "bearer"
+    auth_type = "bearer",
+    thinking = list(
+      body_param = "reasoning_effort",
+      body_value = "high"
+    )
   )
 )
 
@@ -44,9 +56,11 @@ provider_headers <- function(provider, key) {
 }
 
 #' Build request body for a provider
+#' @param thinking logical, whether to enable extended thinking/reasoning
 #' @noRd
-provider_body <- function(provider, model, message, temperature, max_tokens) {
-  switch(provider,
+provider_body <- function(provider, model, message, temperature, max_tokens,
+                          thinking = FALSE) {
+  body <- switch(provider,
     openai = , gemini = {
       list(
         model = model,
@@ -65,6 +79,22 @@ provider_body <- function(provider, model, message, temperature, max_tokens) {
     },
     stop("Unknown provider: ", provider)
   )
+
+  if (isTRUE(thinking)) {
+    t <- .providers[[provider]]$thinking
+    if (!is.null(t)) {
+      if (provider == "claude") {
+        body$temperature <- NULL
+        budget <- t$body_value$budget_tokens
+        if (body$max_tokens <= budget) {
+          body$max_tokens <- budget + 1000L
+        }
+      }
+      body[[t$body_param]] <- t$body_value
+    }
+  }
+
+  body
 }
 
 #' Parse LLM response text from a provider
@@ -85,11 +115,20 @@ provider_parse <- function(provider, parsed_json) {
       if (is.null(parsed_json$content) || length(parsed_json$content) == 0) {
         stop("Invalid response structure: no content found")
       }
-      msg <- parsed_json$content[[1]]$text
-      if (is.null(msg)) {
+      msg_parts <- character(0)
+      for (block in parsed_json$content) {
+        if (is.null(block$type) || block$type == "text") {
+          txt <- block$text
+          if (is.character(txt) && length(txt) == 1) {
+            msg_parts <- c(msg_parts, txt)
+          }
+        }
+      }
+      msg <- paste0(msg_parts, collapse = "")
+      if (nchar(msg) == 0) {
         stop("Invalid response structure: no text content found")
       }
-      as.character(msg)
+      msg
     },
     stop("Unknown provider: ", provider)
   )

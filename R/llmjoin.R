@@ -94,7 +94,8 @@ build_joint <- function(x, y, key1, key2, ...) {
   csv_text <- gsub("```\\w*\\n?|\\n?```", "", llm_response)
 
   tryCatch(
-    read.csv(text = csv_text, stringsAsFactors = FALSE),
+    read.csv(text = csv_text, header = FALSE,
+             col.names = c(key1, key2), stringsAsFactors = FALSE),
     error = \(e) stop(
       "Failed to parse LLM response as CSV.\n",
       "Error: ", e$message, "\n",
@@ -118,6 +119,10 @@ check_joint <- function(.joint, ...) {
   ) %>% chat_llm(...)
 
   err_mtx <- strsplit(llm_response, " is equal to ") %>% do.call(rbind, .)
+
+  if (nrow(err_mtx) == 0 || ncol(err_mtx) == 0 || all(err_mtx[,1] == "")) {
+    return(.joint)
+  }
 
   err_rows <- err_mtx[,1] %>%
     gsub("([.|()\\^{}+$*?\\[\\]\\\\])", "\\\\\\1", .) %>%
