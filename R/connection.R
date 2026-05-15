@@ -209,7 +209,9 @@ set_llm <- function(provider = "openai", url = NULL, key = NULL, model = NULL) {
 #' @export
 #'
 #' @examples
+#' \dontrun{
 #' chat_llm("tell a joke.")
+#' }
 chat_llm <- function(
   .message,
   .model = NULL,
