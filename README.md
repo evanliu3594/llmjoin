@@ -14,10 +14,21 @@ devtools::install_github("evanliu3594/llmjoin")
 1. setup your LLM services.
 ```R
 library(llmjoin)
-set_llm(
-  url = "url-to-your-llm-provider",
-  key = "your-api-key"
-)
+
+# OpenAI
+set_llm(provider = "openai", key = "your-api-key")
+
+# Claude (Anthropic)
+set_llm(provider = "claude", key = "your-api-key")
+
+# Gemini (via OpenAI-compatible endpoint)
+set_llm(provider = "gemini", key = "your-api-key")
+
+# Custom endpoint (Ollama, DeepSeek, Kimi, Grok, Qwen, etc.)
+set_llm(provider = "openai",
+        url = "https://your-custom-endpoint/v1/chat/completions",
+        key = "your-api-key",
+        model = "your-model-name")
 ```
 2. use LLM-JOIN
 ```R

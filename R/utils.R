@@ -13,12 +13,12 @@
 #' @return The result of calling `rhs(lhs)`.
 NULL
 
-#' @importFrom tidyr unite
-#' @importFrom tidyselect everything
-#' @importFrom readr read_csv write_lines clipboard
+#' @importFrom readr read_csv clipboard
 #' @importFrom dplyr left_join filter
 #' @importFrom httr add_headers POST status_code content
 #' @importFrom jsonlite fromJSON toJSON
 NULL
+
+`%||%` <- function(x, y) if (is.null(x)) y else x
 
 utils::globalVariables(".")

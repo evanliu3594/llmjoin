@@ -3,27 +3,29 @@
 #' @export
 test_llm_service_minimal <- function() {
 
-  if (!file.exists("~/.LLMJOIN.yml")) {
+  config_path <- "~/.LLMJOIN.yml"
+
+  if (!file.exists(config_path)) {
     return(list(success = FALSE, message = "Config file not found"))
   }
 
+  config <- config::get(file = config_path, use_parent = FALSE)
+  provider <- config$LLM_provider %||% "openai"
+  if (!provider %in% names(.providers)) {
+    return(list(success = FALSE, message = paste("Unknown provider:", provider)))
+  }
+  model <- config$LLM_model %||% .providers[[provider]]$default_model
+  key <- config$LLM_key
+  url <- config$LLM_URL
+
   tryCatch(
     {
-      config <- config::get(file = "~/.LLMJOIN.yml", use_parent = FALSE)
-      # minimum request
-      body <- list(
-        model = "gpt-4.1-nano",
-        messages = list(list(role = "user", content = "hi")),
-        max_tokens = 1,
-        temperature = 0
-      )
+      body <- provider_body(provider, model, "hi", 0, 1)
+      headers <- do.call(httr::add_headers, provider_headers(provider, key))
 
       response <- httr::POST(
-        url = config$LLM_URL,
-        httr::add_headers(
-          "Authorization" = paste("Bearer", config$LLM_key),
-          "Content-Type" = "application/json"
-        ),
+        url = url,
+        headers,
         body = jsonlite::toJSON(body, auto_unbox = TRUE),
         encode = "raw",
         httr::timeout(10)
@@ -60,7 +62,7 @@ test_llm_service_minimal <- function() {
   )
 }
 
-#' Validate LLM configuration with multiple checks and return 
+#' Validate LLM configuration with multiple checks
 #' @return list with detailed validation results
 #' @export
 validate_llm_config <- function() {
@@ -77,16 +79,16 @@ validate_llm_config <- function() {
     config::get(file = config_path, use_parent = FALSE),
     error = \(e) stop(paste("Invalid config file:", e$message))
   )
-  
+
   if (is.null(config) || is.null(config$LLM_URL) || is.null(config$LLM_key)) {
-    stop("Invalid configuration: missing URL or key.\n")
+    stop("Invalid configuration: missing URL or key.")
   }
 
   # 3. Check if the configuration has already been verified
-  if (!is.null(config$VERIFIED) && config$VERIFIED == TRUE) {
+  if (isTRUE(config$VERIFIED)) {
     cat("Configuration already verified, pass verification.\n")
     return(config)
-  } 
+  }
   cat("Using new LLM service, verifying ...\n")
 
   # 4. Check URL format
@@ -97,10 +99,10 @@ validate_llm_config <- function() {
   # 5. Test Network Connection (Simple Ping)
   cat("Test Network Connection...\n")
   url_test <- tryCatch(
-    httr::HEAD(config$LLM_URL, httr::timeout(5)), 
+    httr::HEAD(config$LLM_URL, httr::timeout(5)),
     error = \(e) stop(paste("Cannot reach URL:", e$message))
   )
-  
+
   if (!is.null(url_test)) {
     cat("Network Connection Test Passed.\n")
   } else {
@@ -109,51 +111,82 @@ validate_llm_config <- function() {
 
   # 6. Test Authentication (Send a Minimal Request)
   cat("Test Authentication...\n")
-  auth_test <- test_llm_service_minimal()()
+  auth_test <- test_llm_service_minimal()
   if (auth_test$success) {
-    cat("LLM service configured and working correctly!\n") 
-    
-    # 7. Write verification status to the configuration file
-    write_lines("  VERIFIED : true", config_path, append = TRUE)
+    cat("LLM service configured and working correctly!\n")
+
+    # 7. Rewrite config with VERIFIED flag properly nested
+    provider <- config$LLM_provider %||% "openai"
+    model <- config$LLM_model %||% .providers[[provider]]$default_model
+    config_content <- sprintf(
+      'default:\n  LLM_provider: "%s"\n  LLM_URL: "%s"\n  LLM_key: "%s"\n  LLM_model: "%s"\n  VERIFIED: true',
+      provider, config$LLM_URL, config$LLM_key, model
+    )
+    writeLines(config_content, config_path)
+    config$VERIFIED <- TRUE
     return(config)
   } else {
     stop("There might be an issue with the authentication, causing your LLM service to be inaccessible.")
   }
-  
+
 }
 
 #' set up your LLM service
-#' @description Set up your LLM service (of course you can use your local ollama).
-#' All information will be stored in your system env and won't upload to anywhere else.
-#' Rest assured, your privacy is secure.
+#' @description Set up your LLM service. Supports OpenAI, Claude (Anthropic),
+#'   and Gemini (via OpenAI-compatible endpoint). For custom endpoints
+#'   (Ollama, proxies, DeepSeek, Kimi, etc.), use provider = "openai" with
+#'   the custom URL.
+#'   All information will be stored in your system env and won't upload to anywhere else.
+#'   Rest assured, your privacy is secure.
 #'
-#' @param url url to your LLM provider
-#' @param key api-key of your service
+#' @param provider character, LLM provider. One of "openai",
+#'   "claude", "gemini". Default "openai".
+#' @param url url to your LLM provider endpoint. If NULL, auto-set from provider.
+#' @param key api-key of your service.
+#' @param model character, model name. If NULL, auto-set from provider default.
 #'
 #' @export
 #'
-set_llm <- function(url = NULL, key = NULL) {
-  # Format Check
-  if (is.null(url) || is.null(key)) {
-    stop("Both 'url' and 'key' must be provided")
+set_llm <- function(provider = "openai", url = NULL, key = NULL, model = NULL) {
+  # Validate provider
+  provider <- tolower(provider)
+  if (!provider %in% names(.providers)) {
+    stop("Unknown provider '", provider,
+         "'. Supported: ", paste(names(.providers), collapse = ", "))
   }
 
-  if (!is.character(url) || !is.character(key)) {
-    stop("Both 'url' and 'key' must be character strings")
+  # Require key
+  if (is.null(key) || !is.character(key) || key == "") {
+    stop("'key' must be provided")
   }
 
-  if (!grepl("^https?://", url)) {
+  p <- .providers[[provider]]
+
+  # Resolve URL
+  if (is.null(url)) {
+    url <- provider_url(provider, p$base_url)
+  } else if (!grepl("^https?://", url)) {
     warning("URL should start with 'http://' or 'https://'")
   }
 
-  # Create configuration content
-  config_content <- sprintf('default:\n  LLM_URL: "%s"\n  LLM_key: "%s"',url, key)
+  # Resolve model
+  if (is.null(model)) {
+    model <- p$default_model
+  }
 
-  # Safely write to a file
+  # Write configuration
+  config_content <- sprintf(
+    'default:\n  LLM_provider: "%s"\n  LLM_URL: "%s"\n  LLM_key: "%s"\n  LLM_model: "%s"',
+    provider, url, key, model
+  )
+
   tryCatch(
     {
       writeLines(config_content, "~/.LLMJOIN.yml")
       cat("LLM services stored in `~/.LLMJOIN.yml`.\n")
+      cat("  Provider:", provider, "\n")
+      cat("  Model:", model, "\n")
+      cat("  URL:", url, "\n")
     },
     error = function(e) {
       stop("Failed to write config file: ", e$message)
@@ -166,8 +199,8 @@ set_llm <- function(url = NULL, key = NULL) {
 #' This function send message to LLM model and retrive the result.
 #'
 #' @param .message the message to send.
-#' @param .model character, LLM model to use. By default gpt-4.1-mini.
-#' @param .temperature OpenAI style randomness control (0~1), by default 0.1, the larger, the more rigorous.
+#' @param .model character, LLM model to use. By default NULL (uses config value).
+#' @param .temperature OpenAI style randomness control (0~1), by default 0.
 #' @param .max_tokens Max tokens to spend.
 #' @param .timeout Max seconds to communicate with LLM
 #'
@@ -178,7 +211,7 @@ set_llm <- function(url = NULL, key = NULL) {
 #' chat_llm("tell a joke.")
 chat_llm <- function(
   .message,
-  .model = "gpt-4.1-mini",
+  .model = NULL,
   .temperature = 0,
   .max_tokens = 1000,
   .timeout = 30
@@ -195,26 +228,27 @@ chat_llm <- function(
 
   LLMJOIN_CONFIG <- validate_llm_config()
 
-  # BUILD REQUEST
-  body <- list(
-    model = .model,
-    messages = list(list(role = "user", content = as.character(.message))),
-    temperature = .temperature,
-    max_tokens = .max_tokens
-  )
+  # RESOLVE PROVIDER AND MODEL
+  provider <- LLMJOIN_CONFIG$LLM_provider %||% "openai"
+  if (!provider %in% names(.providers)) {
+    stop("Unknown provider '", provider, "' in config. Run set_llm() to reconfigure.")
+  }
+  model <- .model %||% LLMJOIN_CONFIG$LLM_model %||% .providers[[provider]]$default_model
 
-  headers <- httr::add_headers(
-    "Authorization" = paste("Bearer", LLMJOIN_CONFIG$LLM_key),
-    "Content-Type" = "application/json"
-  )
+  # BUILD URL
+  url <- LLMJOIN_CONFIG$LLM_URL
+
+  # BUILD REQUEST
+  body <- provider_body(provider, model, as.character(.message), .temperature, .max_tokens)
+  headers <- do.call(httr::add_headers, provider_headers(provider, LLMJOIN_CONFIG$LLM_key))
 
   # SEND REQUEST
   response <- tryCatch(
     {
-      POST(
-        url = LLMJOIN_CONFIG$LLM_URL,
+      httr::POST(
+        url = url,
         headers,
-        body = toJSON(body, auto_unbox = TRUE),
+        body = jsonlite::toJSON(body, auto_unbox = TRUE),
         encode = "raw",
         httr::timeout(.timeout)
       )
@@ -230,20 +264,8 @@ chat_llm <- function(
 
     tryCatch(
       {
-        content <- fromJSON(content_text)
-
-        # CHECK RESPONSE
-        if (is.null(content$choices) || length(content$choices) == 0) {
-          stop("Invalid response structure: no choices found")
-        }
-
-        message_content <- content$choices$message$content
-
-        if (is.null(message_content)) {
-          stop("Invalid response structure: no message content found")
-        }
-
-        return(as.character(message_content))
+        content <- jsonlite::fromJSON(content_text)
+        provider_parse(provider, content)
       },
       error = \(e) {
         stop("Failed to parse response: ", e$message, "\nRaw response: ", content_text)

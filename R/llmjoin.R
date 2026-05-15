@@ -10,7 +10,7 @@ tbl2md <- function(tbl, nm = NULL) {
   nm <- if (is.data.frame(tbl)) names(tbl) else nm
 
   if (is.null(nm)) {
-    stop("provide a validate name for the input vector.")
+    stop("provide a valid name for the input vector.")
   }
 
   header <- paste0("| ", paste(nm, collapse = " | "), " |")
@@ -51,12 +51,19 @@ tbl2md <- function(tbl, nm = NULL) {
 joint_prompt <- function(x, y) {
 
   paste0(
-    "I will provide you with two columns. Please perform a SQL-style FULL JOIN operation to combine the two columns into a single table based on their relationships.\r\n",
-    "Note that the two columns may not match exactly or could even be in different languages.\r\n",
-    "I command you to match carefully with the highest possible accuracy. Leave any unmatched entries blank, and do not generate any data that does not exist in the original tables.\r\n",
-    "Repeat: NEVER generate ANY data that does not exist in the tables provided; otherwise, someone could get hurt as a result.\r\n",
-    "The final output must be a table in CSV format, with no instructions or additional content included.\r\n\n",
-    "column 1:\r\n", tbl2md(x), "\r\n\ncolumn 2:\r\n", tbl2md(y)
+    "Match each item in column 1 to the most similar item in column 2. ",
+    "The columns may differ in spelling, language, or formatting.\n\n",
+    "Rules:\n",
+    "- Match with highest possible accuracy.\n",
+    "- If no reasonable match exists, leave the cell empty.\n",
+    "- Do NOT invent or fabricate any data.\n\n",
+    "Output ONLY a CSV table with two columns, no explanation or markdown fences.\n",
+    "Use comma as delimiter. Quote cells containing commas.\n\n",
+    "Example:\n",
+    "column 1: | id |\n| --- |\n| 01 |\n| 02 |\n",
+    "column 2: | name |\n| --- |\n| Alice |\n| Bob |\n",
+    "Output: 01,Alice\\n02,Bob\n\n",
+    "column 1:\n", tbl2md(x), "\n\ncolumn 2:\n", tbl2md(y)
   ) %>% return()
 
 }
@@ -84,7 +91,7 @@ build_joint <- function(x, y, key1, key2, ...) {
   llm_response <- joint_prompt(unique(x[key1]), unique(y[key2])) %>%
     chat_llm(...)
   
-  gsub("```|csv", "", llm_response) %>% read_csv()
+  gsub("```\\w*\\n?|\\n?```", "", llm_response) %>% read_csv()
 }
 
 #' ask LLM to check if the built joint is correct.
@@ -101,9 +108,11 @@ check_joint <- function(.joint, ...) {
     paste0(.joint[[1]], " is equal to ", .joint[[2]], ",\n") %>% paste0(collapse = "")
   ) %>% chat_llm(...)
 
-  err_mtx <- strsplit(llm_response, " is equal to ") %>% do.call(rbind, .) 
-  
-  err_rows <- err_mtx[,1] %>% paste(collapse = "|")
+  err_mtx <- strsplit(llm_response, " is equal to ") %>% do.call(rbind, .)
+
+  err_rows <- err_mtx[,1] %>%
+    gsub("([.|()\\^{}+$*?\\[\\]\\\\])", "\\\\\\1", .) %>%
+    paste(collapse = "|")
 
   .joint[!grepl(err_rows, .joint[[1]]),]
 }
