@@ -202,8 +202,10 @@ set_llm <- function(provider = "openai", url = NULL, key = NULL, model = NULL) {
 #' @param .model character, LLM model to use. By default NULL (uses config value).
 #' @param .temperature OpenAI style randomness control (0~1), by default 0.
 #' @param .max_tokens Max tokens to spend.
-#' @param .timeout Max seconds to communicate with LLM
+#' @param .timeout Max seconds to communicate with LLM.
 #' @param .verbose logical, print progress messages. Default \code{getOption("llmjoin.verbose", FALSE)}.
+#' @param .thinking logical, enable extended thinking/reasoning for models that support it.
+#'   Default TRUE. Set to FALSE if the model does not support thinking and returns an error.
 #'
 #' @returns LLM answer, strings
 #' @export
@@ -218,7 +220,8 @@ chat_llm <- function(
   .temperature = 0,
   .max_tokens = 1000,
   .timeout = 30,
-  .verbose = getOption("llmjoin.verbose", FALSE)
+  .verbose = getOption("llmjoin.verbose", FALSE),
+  .thinking = TRUE
 ) {
   # VERIFY PARAMS
   if (missing(.message) || is.null(.message) || .message == "") {
@@ -243,8 +246,10 @@ chat_llm <- function(
   url <- LLMJOIN_CONFIG$LLM_URL
 
   # BUILD REQUEST
+  if (.verbose && .thinking) cat("Thinking mode enabled.\n")
   if (.verbose) cat("Sending request to", provider, "using model", model, "...\n")
-  body <- provider_body(provider, model, as.character(.message), .temperature, .max_tokens)
+  body <- provider_body(provider, model, as.character(.message), .temperature,
+                        .max_tokens, thinking = .thinking)
   headers <- do.call(httr::add_headers, provider_headers(provider, LLMJOIN_CONFIG$LLM_key))
 
   # SEND REQUEST
@@ -269,15 +274,24 @@ chat_llm <- function(
 
     tryCatch(
       {
-        content <- jsonlite::fromJSON(content_text)
+        content <- jsonlite::fromJSON(content_text, simplifyVector = FALSE)
         result <- provider_parse(provider, content)
         if (.verbose) cat("Response received (", nchar(content_text), "bytes)\n", sep = "")
         result
       },
       error = \(e) {
-        stop("Failed to parse response: ", e$message, "\nRaw response: ", content_text)
+        if (.verbose) {
+          stop("Failed to parse response: ", e$message, "\nRaw response: ", content_text)
+        } else {
+          stop("Failed to parse response: ", e$message, "\nRaw response (first 200 chars): ",
+               substr(content_text, 1, 200))
+        }
       }
     )
+  } else if (status == 400 && .thinking) {
+    error_msg <- httr::content(response, "text")
+    stop("API request failed with status 400: ", error_msg,
+         "\nThis model may not support extended thinking. Try chat_llm(..., .thinking = FALSE)")
   } else {
     error_msg <- httr::content(response, "text")
     stop("API request failed with status ", status, ": ", error_msg)

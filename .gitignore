@@ -1,4 +1,3 @@
 .Rproj.user/
 .Rhistory
 .RData
-tests/testthat/test.set_llm.R
