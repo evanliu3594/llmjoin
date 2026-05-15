@@ -203,6 +203,7 @@ set_llm <- function(provider = "openai", url = NULL, key = NULL, model = NULL) {
 #' @param .temperature OpenAI style randomness control (0~1), by default 0.
 #' @param .max_tokens Max tokens to spend.
 #' @param .timeout Max seconds to communicate with LLM
+#' @param .verbose logical, print progress messages. Default \code{getOption("llmjoin.verbose", FALSE)}.
 #'
 #' @returns LLM answer, strings
 #' @export
@@ -214,7 +215,8 @@ chat_llm <- function(
   .model = NULL,
   .temperature = 0,
   .max_tokens = 1000,
-  .timeout = 30
+  .timeout = 30,
+  .verbose = getOption("llmjoin.verbose", FALSE)
 ) {
   # VERIFY PARAMS
   if (missing(.message) || is.null(.message) || .message == "") {
@@ -239,6 +241,7 @@ chat_llm <- function(
   url <- LLMJOIN_CONFIG$LLM_URL
 
   # BUILD REQUEST
+  if (.verbose) cat("Sending request to", provider, "using model", model, "...\n")
   body <- provider_body(provider, model, as.character(.message), .temperature, .max_tokens)
   headers <- do.call(httr::add_headers, provider_headers(provider, LLMJOIN_CONFIG$LLM_key))
 
@@ -265,7 +268,9 @@ chat_llm <- function(
     tryCatch(
       {
         content <- jsonlite::fromJSON(content_text)
-        provider_parse(provider, content)
+        result <- provider_parse(provider, content)
+        if (.verbose) cat("Response received (", nchar(content_text), "bytes)\n", sep = "")
+        result
       },
       error = \(e) {
         stop("Failed to parse response: ", e$message, "\nRaw response: ", content_text)

@@ -9,7 +9,8 @@ chat_llm(
   .model = NULL,
   .temperature = 0,
   .max_tokens = 1000,
-  .timeout = 30
+  .timeout = 30,
+  .verbose = getOption("llmjoin.verbose", FALSE)
 )
 }
 \arguments{
@@ -22,6 +23,8 @@ chat_llm(
 \item{.max_tokens}{Max tokens to spend.}
 
 \item{.timeout}{Max seconds to communicate with LLM}
+
+\item{.verbose}{logical, print progress messages. Default \code{getOption("llmjoin.verbose", FALSE)}.}
 }
 \value{
 LLM answer, strings

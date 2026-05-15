@@ -91,7 +91,16 @@ build_joint <- function(x, y, key1, key2, ...) {
   llm_response <- joint_prompt(unique(x[key1]), unique(y[key2])) %>%
     chat_llm(...)
   
-  gsub("```\\w*\\n?|\\n?```", "", llm_response) %>% read_csv()
+  csv_text <- gsub("```\\w*\\n?|\\n?```", "", llm_response)
+
+  tryCatch(
+    read_csv(csv_text),
+    error = \(e) stop(
+      "Failed to parse LLM response as CSV.\n",
+      "Error: ", e$message, "\n",
+      "Raw response:\n", llm_response
+    )
+  )
 }
 
 #' ask LLM to check if the built joint is correct.
@@ -123,21 +132,23 @@ check_joint <- function(.joint, ...) {
 #' @param y a `data.frame` to be join on the rhs.
 #' @param key1 string, name of the key column of data.frame `x` waiting for paring.
 #' @param key2 string, name of the key column of data.frame `y` waiting for paring.
+#' @param check logical, ask LLM to validate the joint. Default FALSE.
 #' @param ... extra params passed to `chat_llm()`
-#' 
+#'
 #' @returns the Fuzzy-joined `data.frame`
 #' @export
 #'
-#' @examples 
+#' @examples
 #' \dontrun{
 #'   x <- data.frame(id = c("01", "02", "04"), value = c(10, 20, 40))
 #'   y <- data.frame(month = c("January", "Feb", "May"), amount = c(100, 200, 400))
-#' 
+#'
 #'   llm_join(x, y, key1 = "id", key2 = "month", model = "gpt-4.1-mini")
 #' }
-llm_join <- function(x, y, key1, key2, ...) {
+llm_join <- function(x, y, key1, key2, check = FALSE, ...) {
 
-  joint <- build_joint(x, y, key1, key2, ...) %>% check_joint(...)
+  joint <- build_joint(x, y, key1, key2, ...)
+  if (check) joint <- check_joint(joint, ...)
 
   Reduce(\(x, y) left_join(x, y), list(x, joint, y)) %>% return()
 
