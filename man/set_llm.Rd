@@ -10,7 +10,7 @@ set_llm(provider = "openai", url = NULL, key = NULL, model = NULL)
 \item{provider}{character, LLM provider. One of "openai",
 "claude", "gemini". Default "openai".}
 
-\item{url}{url to your LLM provider endpoint. If NULL, auto-set from provider.}
+\item{url}{url to your LLM provider endpoint. If NULL, auto-set based on provider.}
 
 \item{key}{api-key of your service.}
 
@@ -23,4 +23,9 @@ Set up your LLM service. Supports OpenAI, Claude (Anthropic),
   the custom URL.
   All information will be stored in your system env and won't upload to anywhere else.
   Rest assured, your privacy is secure.
+}
+\examples{
+\dontrun{
+  set_llm(provider = "openai", key = "<your-openai-api-key>", model = "gpt-5.4-mini")
+}
 }

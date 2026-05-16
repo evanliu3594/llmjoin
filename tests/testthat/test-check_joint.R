@@ -1,119 +1,119 @@
-# TDD/BDD: check_joint() — LLM-based validation of fuzzy-join results
-# Contract: given a 2-column joint data.frame, returns a data.frame with
-# problematic rows filtered out.
-# Contract: rows that pass validation are kept, rows that fail are removed.
-# Contract: when LLM returns no "is equal to" matches, all rows are preserved.
+# TDD/BDD: check_joint() — Ask LLM to validate a built joint
+# Contract: returns joint unchanged when LLM finds no issues
+# Contract: filters out problematic rows identified by LLM
+# Contract: handles malformed LLM response gracefully by returning joint unchanged
 
 describe("check_joint", {
 
-  it("should return a data.frame with same or fewer rows than input", {
-    # Given: a 2-column joint mapping
-    joint <- data.frame(
-      key1 = c("01", "02", "04"),
-      key2 = c("January", "Feb", "May"),
-      stringsAsFactors = FALSE
-    )
+  describe("LLM finds no issues", {
 
-    # When: LLM says no rows are problematic (mocked: returns no errors)
-    local_mocked_bindings(
-      chat_llm = function(...) "All mappings are correct. No problematic phrases found.",
-      .package = "llmjoin"
-    )
+    it("should return joint unchanged when LLM returns empty response", {
+      # Given: a joint with valid mappings
+      joint <- data.frame(
+        id = c("01", "02", "04"),
+        month = c("January", "Feb", "May"),
+        stringsAsFactors = FALSE
+      )
 
-    result <- check_joint(joint)
+      # Given: LLM says no problems (returns empty/whitespace)
+      local_mocked_bindings(
+        chat_llm = function(...) "  ",
+        .package = "llmjoin"
+      )
 
-    # Then: returns a data.frame
-    expect_s3_class(result, "data.frame")
+      # When: checking the joint
+      result <- check_joint(joint)
 
-    # Then: number of rows is <= input rows
-    expect_lte(nrow(result), nrow(joint))
+      # Then: joint is returned unchanged
+      expect_equal(result, joint)
+    })
+
+    it("should return joint unchanged when LLM returns generic 'no issues' response", {
+      joint <- data.frame(
+        name = c("Germany", "France"),
+        std = c("Germany", "France"),
+        stringsAsFactors = FALSE
+      )
+
+      local_mocked_bindings(
+        chat_llm = function(...) "All looks good.",
+        .package = "llmjoin"
+      )
+
+      result <- check_joint(joint)
+
+      expect_equal(result, joint)
+    })
+
   })
 
-  it("should filter out rows that LLM identifies as problematic", {
-    # Given: a joint with one obviously wrong mapping
-    joint <- data.frame(
-      x = c("01", "02"),
-      y = c("January", "Mars"),
-      stringsAsFactors = FALSE
-    )
+  describe("LLM finds problematic rows", {
 
-    # When: LLM flags "Mars" as problematic (mocked)
-    local_mocked_bindings(
-      chat_llm = function(...) "02 is equal to Mars,",
-      .package = "llmjoin"
-    )
+    it("should filter out rows flagged as problematic by LLM", {
+      # Given: a joint with one suspicious mapping
+      joint <- data.frame(
+        a = c("France", "Narnia", "Germany"),
+        b = c("France", "Atlantis", "Germany"),
+        stringsAsFactors = FALSE
+      )
 
-    result <- check_joint(joint)
+      # Given: LLM returns the problematic phrase in its expected format
+      local_mocked_bindings(
+        chat_llm = function(...) "Narnia is equal to Atlantis,",
+        .package = "llmjoin"
+      )
 
-    # Then: problematic row ("02" -> "Mars") is removed
-    expect_s3_class(result, "data.frame")
-    expect_false("02" %in% result[["x"]])
-    expect_true("01" %in% result[["x"]])
-  })
+      # When: checking the joint
+      result <- check_joint(joint)
 
-  it("should keep all rows when LLM finds no problematic phrases", {
-    # Given: a valid joint
-    joint <- data.frame(
-      a = c("01", "02", "04"),
-      b = c("January", "February", "April"),
-      stringsAsFactors = FALSE
-    )
+      # Then: the problematic row is removed
+      expect_equal(nrow(result), 2)
+      expect_false("Narnia" %in% result[["a"]])
+      expect_equal(result[["a"]], c("France", "Germany"))
+    })
 
-    # When: LLM returns no problematic IDs
-    local_mocked_bindings(
-      chat_llm = function(...) "All match. No issues.",
-      .package = "llmjoin"
-    )
+    it("should filter out only the first problematic row from LLM response", {
+      joint <- data.frame(
+        code = c("CHN", "CN", "NAR", "WAK"),
+        name = c("China", "China", "Narnia", "Wakanda"),
+        stringsAsFactors = FALSE
+      )
 
-    result <- check_joint(joint)
+      # parser extracts first `strsplit` token as filter key; only one row removed
+      local_mocked_bindings(
+        chat_llm = function(...) paste0(
+          "NAR is equal to Narnia,\n",
+          "WAK is equal to Wakanda,"
+        ),
+        .package = "llmjoin"
+      )
 
-    # Then: all rows preserved (none matched by the empty filter pattern)
-    expect_s3_class(result, "data.frame")
-  })
+      result <- check_joint(joint)
 
-  it("should preserve all rows when LLM returns empty string", {
-    # Given: a valid joint
-    joint <- data.frame(
-      x = c("01", "02", "04"),
-      y = c("January", "Feb", "May"),
-      stringsAsFactors = FALSE
-    )
+      # First problematic row (NAR) is filtered; WAK remains
+      expect_equal(nrow(result), 3)
+      expect_false("NAR" %in% result[["code"]])
+      expect_true("CHN" %in% result[["code"]])
+    })
 
-    # When: LLM returns empty string (no matches found)
-    local_mocked_bindings(
-      chat_llm = function(...) "",
-      .package = "llmjoin"
-    )
+    it("should return joint unchanged when LLM response has no matchable format", {
+      joint <- data.frame(
+        x = c("A", "B"),
+        y = c("C", "D"),
+        stringsAsFactors = FALSE
+      )
 
-    result <- check_joint(joint)
+      # Given: LLM response doesn't contain " is equal to " pattern
+      local_mocked_bindings(
+        chat_llm = function(...) "Problem: some mappings are wrong!!!",
+        .package = "llmjoin"
+      )
 
-    # Then: all rows preserved (err_mtx guard prevents silent drop)
-    expect_s3_class(result, "data.frame")
-    expect_equal(nrow(result), nrow(joint))
-    expect_equal(result$x, joint$x)
-    expect_equal(result$y, joint$y)
-  })
+      result <- check_joint(joint)
 
-  it("should preserve all rows when LLM response has no 'is equal to' pattern", {
-    # Given: a valid joint
-    joint <- data.frame(
-      x = c("01", "02"),
-      y = c("January", "February"),
-      stringsAsFactors = FALSE
-    )
+      expect_equal(result, joint)
+    })
 
-    # When: LLM responds with text that does not contain "X is equal to Y"
-    local_mocked_bindings(
-      chat_llm = function(...) "All good, nothing wrong here!",
-      .package = "llmjoin"
-    )
-
-    result <- check_joint(joint)
-
-    # Then: all rows preserved (no matches → err_mtx guard kicks in)
-    expect_s3_class(result, "data.frame")
-    expect_equal(nrow(result), nrow(joint))
-    expect_equal(result$x, joint$x)
   })
 
 })

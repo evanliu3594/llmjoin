@@ -2,14 +2,14 @@
 % Please edit documentation in R/llmjoin.R
 \name{build_joint}
 \alias{build_joint}
-\title{build fuzzy-join joint}
+\title{Build a fuzzy-join joint data.frame via LLM}
 \usage{
 build_joint(x, y, key1, key2, ...)
 }
 \arguments{
-\item{x}{a `data.frame` to be join on the lhs.}
+\item{x}{a `data.frame` to be joined on the lhs.}
 
-\item{y}{a `data.frame` to be join on the rhs.}
+\item{y}{a `data.frame` to be joined on the rhs.}
 
 \item{key1}{string, name of the key column of data.frame `x` waiting for paring.}
 
@@ -18,10 +18,10 @@ build_joint(x, y, key1, key2, ...)
 \item{...}{extra params passed to `chat_llm()`}
 }
 \value{
-the Fuzzy-joined `data.frame`
+a 2-column `data.frame` mapping values from key1 to key2.
 }
 \description{
-build fuzzy-join joint
+Build a fuzzy-join joint data.frame via LLM
 }
 \examples{
 \dontrun{

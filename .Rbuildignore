@@ -2,3 +2,7 @@
 ^\.Rproj\.user$
 ^LICENSE\.md$
 ^CLAUDE\.md$
+^\.claude$
+^test_output\.txt$
+^CRAN-SUBMISSION$
+^cran-comments\.md$
