@@ -15,7 +15,7 @@ tbl2md <- function(tbl, nm = NULL) {
 
   header <- paste0("| ", paste(nm, collapse = " | "), " |")
 
-  rule <- paste0("| ", paste(rep("---", length(names(tbl))), collapse = " | "), " |")
+  rule <- paste0("| ", paste(rep("---", length(nm)), collapse = " | "), " |")
 
   content <- if (is.data.frame(tbl) & length(tbl) > 1) {
     do.call(paste, c(tbl, sep = " | "))
@@ -27,7 +27,7 @@ tbl2md <- function(tbl, nm = NULL) {
 
   content <- paste0("| ", content, " |")
 
-  paste0(header, "\n", rule, "\n", paste(content, collapse = "\n")) %>% return()
+  paste0(header, "\n", rule, "\n", paste(content, collapse = "\n"))
 }
 
 #' Generate connector prompt
@@ -49,7 +49,6 @@ tbl2md <- function(tbl, nm = NULL) {
 #'   )
 #' }
 joint_prompt <- function(x, y) {
-
   paste0(
     "Match each item in column 1 to the most similar item in column 2. ",
     "The columns may differ in spelling, language, or formatting.\n\n",
@@ -57,29 +56,97 @@ joint_prompt <- function(x, y) {
     "- Match with highest possible accuracy.\n",
     "- If no reasonable match exists, leave the cell empty.\n",
     "- Do NOT invent or fabricate any data.\n\n",
-    "Output ONLY a CSV table with two columns, no explanation or markdown fences.\n",
-    "Use comma as delimiter. Quote cells containing commas.\n\n",
+    "Output format (MUST follow exactly):\n",
+    "- Each line is one mapping pair: value_from_column1,value_from_column2\n",
+    "- Two columns separated by a single comma, no spaces around comma.\n",
+    "- If a value itself contains a comma, wrap that value in double quotes.\n",
+    "- No header row, no markdown fences, no extra text before or after.\n",
+    "- Do NOT include any explanation, only the CSV lines.\n\n",
     "Example:\n",
     "column 1: | id |\n| --- |\n| 01 |\n| 02 |\n",
     "column 2: | name |\n| --- |\n| Alice |\n| Bob |\n",
-    "Output: 01,Alice\\n02,Bob\n\n",
-    "column 1:\n", tbl2md(x), "\n\ncolumn 2:\n", tbl2md(y)
-  ) %>% return()
-
+    "Correct output:\n01,Alice\n02,Bob\n\n",
+    "column 1:\n",
+    tbl2md(x),
+    "\n\ncolumn 2:\n",
+    tbl2md(y)
+  )
 }
 
-#' build fuzzy-join joint
+#' Parse LLM response into a fuzzy-join joint data.frame
 #'
-#' @param x a `data.frame` to be join on the lhs.
-#' @param y a `data.frame` to be join on the rhs.
+#' Strips markdown fences, extracts the longest consecutive block of
+#' comma-separated lines, ensures a header row matching `key1,key2`
+#' is present, and parses the CSV into a 2-column data.frame.
+#'
+#' @param llm_response character, raw response from the LLM.
+#' @param key1 string, name of the lhs key column.
+#' @param key2 string, name of the rhs key column.
+#'
+#' @returns a 2-column `data.frame` mapping values from key1 to key2.
+#' @export
+#'
+#' @examples
+#' parse_joint("01,January\n02,Feb\n04,May", key1 = "id", key2 = "month")
+parse_joint <- function(llm_response, key1, key2) {
+  resp_lines <- strsplit(llm_response, "\n")[[1]]
+  preview_n <- min(5, length(resp_lines))
+  cat("--- LLM response (first", preview_n, "lines) ---\n")
+  for (i in seq_len(preview_n)) cat(resp_lines[i], "\n", sep = "")
+  if (length(resp_lines) > preview_n) {
+    cat("... (", length(resp_lines) - preview_n, " more lines)\n", sep = "")
+  }
+  cat("--- end preview ---\n")
+
+  txt <- gsub("```\\w*\\n?|\\n?```", "", llm_response)
+  lines <- strsplit(txt, "\n")[[1]]
+  has_comma <- grepl(",", lines, fixed = TRUE) & nchar(trimws(lines)) > 0
+
+  if (!any(has_comma)) {
+    stop("Failed to parse LLM response as CSV.\nRaw response:\n", llm_response)
+  }
+
+  r <- rle(has_comma)
+  best <- which.max(r$lengths * r$values)
+  start <- sum(r$lengths[seq_len(best - 1)]) + 1
+  end   <- start + r$lengths[best] - 1
+
+  csv_lines <- lines[start:end]
+
+  first_fields <- tolower(trimws(strsplit(csv_lines[1], ",")[[1]]))
+  has_header <- length(first_fields) == 2 &&
+    first_fields[1] == tolower(key1) &&
+    first_fields[2] == tolower(key2)
+
+  if (!has_header) {
+    csv_lines <- c(paste(key1, key2, sep = ","), csv_lines)
+  }
+
+  tryCatch(
+    readr::read_csv(I(paste(csv_lines, collapse = "\n")),
+                    col_names = c(key1, key2), skip = 1,
+                    col_types = "cc", show_col_types = FALSE,
+                    name_repair = "minimal"),
+    error = \(e) stop(
+      "Failed to parse LLM response as CSV.\n",
+      "Error: ", e$message, "\n",
+      "Raw response:\n", llm_response
+    )
+  )
+}
+
+#' Build a fuzzy-join joint data.frame via LLM
+#'
+#' @param x a `data.frame` to be joined on the lhs.
+#' @param y a `data.frame` to be joined on the rhs.
 #' @param key1 string, name of the key column of data.frame `x` waiting for paring.
 #' @param key2 string, name of the key column of data.frame `y` waiting for paring.
 #' @param ... extra params passed to `chat_llm()`
 #'
-#' @returns the Fuzzy-joined `data.frame`
+#' @returns a 2-column `data.frame` mapping values from key1 to key2.
 #' @export
-#' 
-#' @examples 
+#'
+#' @examples
 #' \dontrun{
 #'   build_joint(
 #'     x = data.frame(x = c("01","02","04")),
@@ -90,45 +157,41 @@ joint_prompt <- function(x, y) {
 build_joint <- function(x, y, key1, key2, ...) {
   llm_response <- joint_prompt(unique(x[key1]), unique(y[key2])) %>%
     chat_llm(...)
-  
-  csv_text <- gsub("```\\w*\\n?|\\n?```", "", llm_response)
-
-  tryCatch(
-    read.csv(text = csv_text, header = FALSE,
-             col.names = c(key1, key2), stringsAsFactors = FALSE),
-    error = \(e) stop(
-      "Failed to parse LLM response as CSV.\n",
-      "Error: ", e$message, "\n",
-      "Raw response:\n", llm_response
-    )
-  )
+  parse_joint(llm_response, key1, key2)
 }
 
 #' ask LLM to check if the built joint is correct.
 #' @param .joint 2-column data.frame, the built joint.
 #' @param ... extra params passed to `chat_llm()`
+#'
+#' @examples
+#' \dontrun{
+#'   joint <- data.frame(id = c("01", "02"), month = c("January", "Feb"))
+#'   check_joint(joint)
+#' }
 #' @export
 check_joint <- function(.joint, ...) {
-  
   llm_response <- paste0(
     "Below are some phrases for judgment. ",
-    "Please identify any that may be problematic, ", 
+    "Please identify any that may be problematic, ",
     "filter them out, and return only the problematic phrases. ",
     "Do not include any unexpected information: \n\n",
-    paste0(.joint[[1]], " is equal to ", .joint[[2]], ",\n") %>% paste0(collapse = "")
-  ) %>% chat_llm(...)
+    paste0(.joint[[1]], " is equal to ", .joint[[2]], ",\n") %>%
+      paste0(collapse = "")
+  ) %>%
+    chat_llm(...)
 
   err_mtx <- strsplit(llm_response, " is equal to ") %>% do.call(rbind, .)
 
-  if (nrow(err_mtx) == 0 || ncol(err_mtx) == 0 || all(err_mtx[,1] == "")) {
+  if (nrow(err_mtx) == 0 || ncol(err_mtx) == 0 || all(err_mtx[, 1] == "")) {
     return(.joint)
   }
 
-  err_rows <- err_mtx[,1] %>%
+  err_rows <- err_mtx[, 1] %>%
     gsub("([.|()\\^{}+$*?\\[\\]\\\\])", "\\\\\\1", .) %>%
     paste(collapse = "|")
 
-  .joint[!grepl(err_rows, .joint[[1]]),]
+  .joint[!grepl(err_rows, .joint[[1]]), ]
 }
 
 #' Fuzzy join with LLM
@@ -151,14 +214,11 @@ check_joint <- function(.joint, ...) {
 #'   llm_join(x, y, key1 = "id", key2 = "month", model = "gpt-4.1-mini")
 #' }
 llm_join <- function(x, y, key1, key2, check = FALSE, ...) {
-
   joint <- build_joint(x, y, key1, key2, ...)
-  if (check) joint <- check_joint(joint, ...)
+  if (check) {
+    joint <- check_joint(joint, ...)
+  }
 
-  Reduce(\(x, y) merge(x, y, all.x = TRUE), list(x, joint, y))
-
+  result <- merge(x, joint, all.x = TRUE)
+  merge(result, y, all.x = TRUE)
 }
-
-
-
-

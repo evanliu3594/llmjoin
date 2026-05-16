@@ -14,3 +14,9 @@ check_joint(.joint, ...)
 \description{
 ask LLM to check if the built joint is correct.
 }
+\examples{
+\dontrun{
+  joint <- data.frame(id = c("01", "02"), month = c("January", "Feb"))
+  check_joint(joint)
+}
+}
