@@ -1,3 +1,6 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
 ^LICENSE\.md$
+^test_output\.txt$
+^CRAN-SUBMISSION$
+^cran-comments\.md$

@@ -1,95 +1,155 @@
-# TDD/BDD: set_llm() — Configure LLM service settings
-# Contract: given valid provider and key, writes config to ~/.LLMJOIN.yml.
-# Contract: given unknown provider, errors.
-# Contract: given empty key, errors.
+# TDD/BDD: set_llm() — Configure LLM service and store credentials
+# Contract: writes config to tools::R_user_dir("llmjoin", "config")/LLMJOIN.yml
+# Contract: validates provider is known, key is non-empty
+# Contract: auto-fills URL and model from provider defaults when NULL
 
 describe("set_llm", {
 
-  it("should error when provider is not recognized", {
-    # Given: an invalid provider name
-    # When & Then: calling set_llm with bad provider should error
-    expect_error(
-      set_llm(provider = "nonexistent", key = "sk-test"),
-      "Unknown provider"
-    )
+  describe("validation", {
+
+    it("should error when provider is unknown", {
+      expect_error(
+        set_llm(provider = "unknown_provider", key = "sk-abc"),
+        "Unknown provider"
+      )
+    })
+
+    it("should error when key is NULL", {
+      expect_error(
+        set_llm(provider = "openai", key = NULL),
+        "'key' must be provided"
+      )
+    })
+
+    it("should error when key is empty string", {
+      expect_error(
+        set_llm(provider = "openai", key = ""),
+        "'key' must be provided"
+      )
+    })
+
+    it("should warn when URL does not start with http", {
+      local_mocked_bindings(
+        writeLines = function(...) invisible(),
+        dir.create = function(...) invisible(TRUE),
+        cat = function(...) invisible(),
+        .package = "base"
+      )
+
+      expect_warning(
+        set_llm(provider = "openai", url = "no-http.com", key = "sk-abc"),
+        "URL should start with"
+      )
+    })
+
   })
 
-  it("should error when key is NULL", {
-    # Given: NULL API key
-    # When & Then: should error with clear message
-    expect_error(
-      set_llm(provider = "openai", key = NULL),
-      "'key' must be provided"
-    )
-  })
+  describe("config file writing", {
 
-  it("should error when key is empty string", {
-    # Given: empty API key
-    # When & Then: should error
-    expect_error(
-      set_llm(provider = "openai", key = ""),
-      "'key' must be provided"
-    )
-  })
+    it("should write config to tools::R_user_dir with auto-filled defaults", {
+      # Given: a mock to capture writeLines calls
+      writeLines_calls <- list()
+      local_mocked_bindings(
+        writeLines = function(text, con, ...) {
+          writeLines_calls <<- c(writeLines_calls, list(list(text = text, path = con)))
+        },
+        dir.create = function(...) invisible(TRUE),
+        cat = function(...) invisible(),
+        .package = "base"
+      )
 
-  it("should write config to ~/.LLMJOIN.yml with correct provider and key", {
-    # Given: no existing config (backup if present)
-    config_path <- path.expand("~/.LLMJOIN.yml")
-    backup_path <- paste0(config_path, ".test-backup")
-    if (file.exists(config_path)) {
-      file.rename(config_path, backup_path)
-      on.exit(file.rename(backup_path, config_path))
-    } else {
-      on.exit(unlink(config_path))
-    }
+      # When: setting up an OpenAI provider with minimal args
+      set_llm(provider = "openai", key = "sk-test-key")
 
-    # When: setting LLM config with valid provider and key
-    set_llm(provider = "openai", key = "sk-test123")
+      # Then: writeLines was called once
+      expect_equal(length(writeLines_calls), 1)
 
-    # Then: config file was created
-    expect_true(file.exists(config_path))
+      # Then: path is inside tools::R_user_dir
+      expected_dir <- tools::R_user_dir("llmjoin", "config")
+      expect_match(writeLines_calls[[1]]$path, expected_dir, fixed = TRUE)
+      expect_match(writeLines_calls[[1]]$path, "LLMJOIN.yml", fixed = TRUE)
 
-    # Then: config content contains provider and key
-    config_content <- paste(readLines(config_path), collapse = "\n")
-    expect_match(config_content, 'LLM_provider: "openai"')
-    expect_match(config_content, 'LLM_key: "sk-test123"')
-  })
+      # Then: config content has correct YAML structure
+      text <- writeLines_calls[[1]]$text
+      expect_match(text, "LLM_provider: 'openai'", fixed = TRUE)
+      expect_match(text, "LLM_key: 'sk-test-key'", fixed = TRUE)
+      expect_match(text, "LLM_model: 'gpt-5.4-mini'", fixed = TRUE)
+      expect_match(text, "LLM_URL: 'https://api.openai.com/v1/chat/completions'",
+                   fixed = TRUE)
+    })
 
-  it("should auto-resolve URL from provider when URL not given", {
-    # Given: openai provider without explicit URL
-    config_path <- path.expand("~/.LLMJOIN.yml")
-    backup_path <- paste0(config_path, ".test-backup")
-    if (file.exists(config_path)) {
-      file.rename(config_path, backup_path)
-      on.exit(file.rename(backup_path, config_path))
-    } else {
-      on.exit(unlink(config_path))
-    }
+    it("should use custom URL and model when provided", {
+      writeLines_calls <- list()
+      local_mocked_bindings(
+        writeLines = function(text, con, ...) {
+          writeLines_calls <<- c(writeLines_calls, list(list(text = text, path = con)))
+        },
+        dir.create = function(...) invisible(TRUE),
+        cat = function(...) invisible(),
+        .package = "base"
+      )
 
-    # When: setting LLM config without URL
-    set_llm(provider = "openai", key = "sk-test")
+      set_llm(provider = "openai", url = "https://custom.api.com/v1",
+              key = "sk-custom", model = "gpt-4.1-mini")
 
-    # Then: URL auto-resolved to OpenAI endpoint
-    config_content <- paste(readLines(config_path), collapse = "\n")
-    expect_match(config_content, "api.openai.com")
-  })
+      text <- writeLines_calls[[1]]$text
+      expect_match(text, "LLM_URL: 'https://custom.api.com/v1'", fixed = TRUE)
+      expect_match(text, "LLM_model: 'gpt-4.1-mini'", fixed = TRUE)
+    })
 
-  it("should warn when URL does not start with http", {
-    # Given: a URL without protocol
-    config_path <- path.expand("~/.LLMJOIN.yml")
-    backup_path <- paste0(config_path, ".test-backup")
-    if (file.exists(config_path)) {
-      file.rename(config_path, backup_path)
-      on.exit(file.rename(backup_path, config_path))
-    } else {
-      on.exit(unlink(config_path))
-    }
+    it("should escape single quotes in values", {
+      writeLines_calls <- list()
+      local_mocked_bindings(
+        writeLines = function(text, con, ...) {
+          writeLines_calls <<- c(writeLines_calls, list(list(text = text, path = con)))
+        },
+        dir.create = function(...) invisible(TRUE),
+        cat = function(...) invisible(),
+        .package = "base"
+      )
 
-    # When & Then: should warn about URL format
-    expect_warning(
-      set_llm(provider = "openai", key = "sk-test", url = "bad-url"),
-      "URL should start with"
-    )
+      set_llm(provider = "openai", key = "sk-with-'quote'-chars")
+
+      text <- writeLines_calls[[1]]$text
+      expect_match(text, "LLM_key: 'sk-with-''quote''-chars'", fixed = TRUE)
+    })
+
+    it("should support claude provider with API key auth", {
+      writeLines_calls <- list()
+      local_mocked_bindings(
+        writeLines = function(text, con, ...) {
+          writeLines_calls <<- c(writeLines_calls, list(list(text = text, path = con)))
+        },
+        dir.create = function(...) invisible(TRUE),
+        cat = function(...) invisible(),
+        .package = "base"
+      )
+
+      set_llm(provider = "claude", key = "sk-ant-test")
+
+      text <- writeLines_calls[[1]]$text
+      expect_match(text, "LLM_provider: 'claude'", fixed = TRUE)
+      expect_match(text, "LLM_model: 'claude-haiku-4-5'", fixed = TRUE)
+    })
+
+    it("should support gemini provider", {
+      writeLines_calls <- list()
+      local_mocked_bindings(
+        writeLines = function(text, con, ...) {
+          writeLines_calls <<- c(writeLines_calls, list(list(text = text, path = con)))
+        },
+        dir.create = function(...) invisible(TRUE),
+        cat = function(...) invisible(),
+        .package = "base"
+      )
+
+      set_llm(provider = "gemini", key = "gemini-key")
+
+      text <- writeLines_calls[[1]]$text
+      expect_match(text, "LLM_provider: 'gemini'", fixed = TRUE)
+      expect_match(text, "LLM_model: 'gemini-3-flash'", fixed = TRUE)
+    })
+
   })
 
 })
