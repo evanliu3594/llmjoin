@@ -2,7 +2,7 @@
 % Please edit documentation in R/connection.R
 \name{set_llm}
 \alias{set_llm}
-\title{set up your LLM service}
+\title{Set up your LLM service}
 \usage{
 set_llm(provider = "openai", url = NULL, key = NULL, model = NULL)
 }
@@ -16,13 +16,16 @@ set_llm(provider = "openai", url = NULL, key = NULL, model = NULL)
 
 \item{model}{character, model name. If NULL, auto-set from provider default.}
 }
+\value{
+NULL invisibly. Called for side effect of writing the config file.
+}
 \description{
 Set up your LLM service. Supports OpenAI, Claude (Anthropic),
   and Gemini (via OpenAI-compatible endpoint). For custom endpoints
   (Ollama, proxies, DeepSeek, Kimi, etc.), use provider = "openai" with
   the custom URL.
-  All information will be stored in your system env and won't upload to anywhere else.
-  Rest assured, your privacy is secure.
+  All information is stored locally in your system configuration and is never
+  uploaded or shared.
 }
 \examples{
 \dontrun{

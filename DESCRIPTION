@@ -1,7 +1,7 @@
 Package: llmjoin
 Type: Package
-Title: Fuzzyjoin with LLM-Powered
-Version: 0.3
+Title: LLM-Powered Fuzzy Join
+Version: 0.3.0
 Authors@R: c(
     person(
       "Yifan", "LIU",
@@ -9,18 +9,20 @@ Authors@R: c(
       role = c("aut", "cre")
     )
   )
-Description: Leveraging Large Language Models to Resolve Ambiguous Links: Now you can navigate data across languages, translations, and varying levels of precision.
+Description: Resolves ambiguous links between data frames using large language models (LLMs). Supports matching across spelling variations, translations, and differing levels of precision.
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: false
 RoxygenNote: 7.3.3
+Config/testthat/edition: 3
 Imports:
     httr,
     jsonlite,
-    magrittr,
     config,
     readr
+URL: https://github.com/evanliu3594/llmjoin
+BugReports: https://github.com/evanliu3594/llmjoin/issues
 Suggests:
     testthat (>= 3.0.0)
-Depends: 
+Depends:
     R (>= 4.2.0)

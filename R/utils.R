@@ -1,7 +1,3 @@
-#' @importFrom magrittr %>%
-#' @export
-magrittr::`%>%`
-
 #' @importFrom httr add_headers POST status_code content
 #' @importFrom jsonlite fromJSON toJSON
 #' @importFrom readr read_csv

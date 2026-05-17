@@ -12,18 +12,15 @@ joint_prompt(x, y)
 \item{y}{1-column `data.frame` or vector of characters, right hand side of the join}
 }
 \value{
-a connectors `data.frame` for joining.
+A character string containing the matching prompt.
 }
 \description{
-Generate a prompt to guide the LLM in generating a joint for dataframe joinning, leveraging the two key columns from the tables to be connected.
-By far(2025/04/10), DeepSeek R1 and gpt-4.1-mini showed the best result, other LLMs might fabricate non-existing data in the result.
+Generate a prompt to guide the LLM in generating a joint for data frame joining, leveraging the two key columns from the tables to be connected.
+As of 2025/04/10, DeepSeek R1 and gpt-4.1-mini showed the best result; other LLMs might fabricate non-existent data in the result.
 }
 \examples{
-# run in Rstudio script panel:
-\dontrun{
-  joint_prompt(
-    data.frame(x = c("01","02","04")),
-    data.frame(y = c("January","Feb","May"))
-  )
-}
+joint_prompt(
+  data.frame(x = c("01","02","04")),
+  data.frame(y = c("January","Feb","May"))
+)
 }

@@ -27,10 +27,10 @@ chat_llm(
 \item{.verbose}{logical, print progress messages. Default \code{getOption("llmjoin.verbose", FALSE)}.}
 }
 \value{
-LLM answer, strings
+A character string with the LLM's response text.
 }
 \description{
-This function send message to LLM model and retrive the result.
+This function sends a message to the LLM model and retrieves the result.
 }
 \examples{
 \dontrun{

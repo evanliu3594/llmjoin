@@ -2,7 +2,7 @@
 % Please edit documentation in R/llmjoin.R
 \name{tbl2md}
 \alias{tbl2md}
-\title{Turning R dataframe into markdown table}
+\title{Convert a data frame to a markdown table}
 \usage{
 tbl2md(tbl, nm = NULL)
 }
@@ -15,7 +15,7 @@ tbl2md(tbl, nm = NULL)
 markdown style table string lines
 }
 \description{
-Turning R dataframe into markdown table
+Convert a data frame to a markdown table
 }
 \examples{
 tbl2md(iris)
