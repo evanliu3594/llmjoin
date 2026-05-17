@@ -36,9 +36,9 @@ LLM-powered fuzzy join for R data.frames. Three layers:
 
 **API layer** (`R/connection.R`): `chat_llm(.message, .model, .temperature, .max_tokens, .timeout, .verbose, .thinking)` — the single entry point for LLM calls. Default `.thinking = TRUE` enables max reasoning/thinking intensity for all providers (Claude: `thinking: {type: enabled, budget_tokens: 16000}` with temperature removed; OpenAI/Gemini: `reasoning_effort: "high"`). Error handling: 400 + `.thinking=TRUE` suggests `.thinking=FALSE`.
 
-**Join layer** (`R/llmjoin.R`): `tbl2md()` → data.frame to markdown table. `joint_prompt()` → builds matching prompt from two key columns. `build_joint()` → builds prompt via `joint_prompt()`, calls LLM via `chat_llm()`, delegates to `parse_joint()` for CSV parsing. `parse_joint()` → strips markdown fences, extracts CSV block, ensures key1/key2 header, parses into 2-column data.frame. `check_joint()` → asks LLM to validate mapping, filters problematic rows. `llm_join()` → end-to-end fuzzy join orchestrating build_joint + optional check_joint + merge.
+**Join layer** (`R/llmjoin.R`): `tbl2md()` → data.frame to markdown table. `joint_prompt()` → builds matching prompt from two key columns. `build_joint()` → builds prompt via `joint_prompt()`, calls LLM via `chat_llm()`, delegates to `parse_joint()` for CSV parsing. `parse_joint()` → strips markdown fences, extracts CSV block, ensures key1/key2 header, parses into 2-column data.frame. `llm_join()` → end-to-end fuzzy join orchestrating build_joint + merge.
 
-**Utilities** (`R/utils.R`): pipe re-export, `%||%` null-coalesce, httr/jsonlite imports, global variable declarations.
+**Utilities** (`R/utils.R`): `%||%` null-coalesce, httr/jsonlite imports, global variable declarations.
 
 ## Key patterns
 

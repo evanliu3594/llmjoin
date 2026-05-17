@@ -1,4 +1,4 @@
-#' Turning R dataframe into markdown table
+#' Convert a data frame to a markdown table
 #'
 #' @param tbl a `data.frame` object or a vector.
 #' @param nm character, only used if `tbl` is a vector.
@@ -32,22 +32,19 @@ tbl2md <- function(tbl, nm = NULL) {
 
 #' Generate connector prompt
 #'
-#' Generate a prompt to guide the LLM in generating a joint for dataframe joinning, leveraging the two key columns from the tables to be connected.
-#' By far(2025/04/10), DeepSeek R1 and gpt-4.1-mini showed the best result, other LLMs might fabricate non-existing data in the result.
+#' Generate a prompt to guide the LLM in generating a joint for data frame joining, leveraging the two key columns from the tables to be connected.
+#' As of 2025/04/10, DeepSeek R1 and gpt-4.1-mini showed the best result; other LLMs might fabricate non-existent data in the result.
 #' @param x 1-column `data.frame` or vector of characters, left hand side of the join
 #' @param y 1-column `data.frame` or vector of characters, right hand side of the join
 #'
-#' @returns a connectors `data.frame` for joining.
+#' @returns A character string containing the matching prompt.
 #' @export
 #'
 #' @examples
-#' # run in Rstudio script panel:
-#' \dontrun{
-#'   joint_prompt(
-#'     data.frame(x = c("01","02","04")),
-#'     data.frame(y = c("January","Feb","May"))
-#'   )
-#' }
+#' joint_prompt(
+#'   data.frame(x = c("01","02","04")),
+#'   data.frame(y = c("January","Feb","May"))
+#' )
 joint_prompt <- function(x, y) {
   paste0(
     "Match each item in column 1 to the most similar item in column 2. ",
@@ -89,15 +86,6 @@ joint_prompt <- function(x, y) {
 #' @examples
 #' parse_joint("01,January\n02,Feb\n04,May", key1 = "id", key2 = "month")
 parse_joint <- function(llm_response, key1, key2) {
-  resp_lines <- strsplit(llm_response, "\n")[[1]]
-  preview_n <- min(5, length(resp_lines))
-  cat("--- LLM response (first", preview_n, "lines) ---\n")
-  for (i in seq_len(preview_n)) cat(resp_lines[i], "\n", sep = "")
-  if (length(resp_lines) > preview_n) {
-    cat("... (", length(resp_lines) - preview_n, " more lines)\n", sep = "")
-  }
-  cat("--- end preview ---\n")
-
   txt <- gsub("```\\w*\\n?|\\n?```", "", llm_response)
   lines <- strsplit(txt, "\n")[[1]]
   has_comma <- grepl(",", lines, fixed = TRUE) & nchar(trimws(lines)) > 0
@@ -139,8 +127,8 @@ parse_joint <- function(llm_response, key1, key2) {
 #'
 #' @param x a `data.frame` to be joined on the lhs.
 #' @param y a `data.frame` to be joined on the rhs.
-#' @param key1 string, name of the key column of data.frame `x` waiting for paring.
-#' @param key2 string, name of the key column of data.frame `y` waiting for paring.
+#' @param key1 string, name of the key column of data.frame `x` waiting for pairing.
+#' @param key2 string, name of the key column of data.frame `y` waiting for pairing.
 #' @param ... extra params passed to `chat_llm()`
 #'
 #' @returns a 2-column `data.frame` mapping values from key1 to key2.
@@ -155,55 +143,20 @@ parse_joint <- function(llm_response, key1, key2) {
 #'   )
 #' }
 build_joint <- function(x, y, key1, key2, ...) {
-  llm_response <- joint_prompt(unique(x[key1]), unique(y[key2])) %>%
+  llm_response <- joint_prompt(unique(x[key1]), unique(y[key2])) |>
     chat_llm(...)
   parse_joint(llm_response, key1, key2)
 }
 
-#' ask LLM to check if the built joint is correct.
-#' @param .joint 2-column data.frame, the built joint.
-#' @param ... extra params passed to `chat_llm()`
-#'
-#' @examples
-#' \dontrun{
-#'   joint <- data.frame(id = c("01", "02"), month = c("January", "Feb"))
-#'   check_joint(joint)
-#' }
-#' @export
-check_joint <- function(.joint, ...) {
-  llm_response <- paste0(
-    "Below are some phrases for judgment. ",
-    "Please identify any that may be problematic, ",
-    "filter them out, and return only the problematic phrases. ",
-    "Do not include any unexpected information: \n\n",
-    paste0(.joint[[1]], " is equal to ", .joint[[2]], ",\n") %>%
-      paste0(collapse = "")
-  ) %>%
-    chat_llm(...)
-
-  err_mtx <- strsplit(llm_response, " is equal to ") %>% do.call(rbind, .)
-
-  if (nrow(err_mtx) == 0 || ncol(err_mtx) == 0 || all(err_mtx[, 1] == "")) {
-    return(.joint)
-  }
-
-  err_rows <- err_mtx[, 1] %>%
-    gsub("([.|()\\^{}+$*?\\[\\]\\\\])", "\\\\\\1", .) %>%
-    paste(collapse = "|")
-
-  .joint[!grepl(err_rows, .joint[[1]]), ]
-}
-
 #' Fuzzy join with LLM
 #'
-#' @param x a `data.frame` to be join on the lhs.
-#' @param y a `data.frame` to be join on the rhs.
-#' @param key1 string, name of the key column of data.frame `x` waiting for paring.
-#' @param key2 string, name of the key column of data.frame `y` waiting for paring.
-#' @param check logical, ask LLM to validate the joint. Default FALSE.
+#' @param x a `data.frame` to be joined on the lhs.
+#' @param y a `data.frame` to be joined on the rhs.
+#' @param key1 string, name of the key column of data.frame `x` waiting for pairing.
+#' @param key2 string, name of the key column of data.frame `y` waiting for pairing.
 #' @param ... extra params passed to `chat_llm()`
 #'
-#' @returns the Fuzzy-joined `data.frame`
+#' @returns the fuzzy-joined `data.frame`
 #' @export
 #'
 #' @examples
@@ -213,12 +166,8 @@ check_joint <- function(.joint, ...) {
 #'
 #'   llm_join(x, y, key1 = "id", key2 = "month", model = "gpt-4.1-mini")
 #' }
-llm_join <- function(x, y, key1, key2, check = FALSE, ...) {
+llm_join <- function(x, y, key1, key2, ...) {
   joint <- build_joint(x, y, key1, key2, ...)
-  if (check) {
-    joint <- check_joint(joint, ...)
-  }
-
   result <- merge(x, joint, all.x = TRUE)
   merge(result, y, all.x = TRUE)
 }

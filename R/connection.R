@@ -1,10 +1,10 @@
-#' set up your LLM service
+#' Set up your LLM service
 #' @description Set up your LLM service. Supports OpenAI, Claude (Anthropic),
 #'   and Gemini (via OpenAI-compatible endpoint). For custom endpoints
 #'   (Ollama, proxies, DeepSeek, Kimi, etc.), use provider = "openai" with
 #'   the custom URL.
-#'   All information will be stored in your system env and won't upload to anywhere else.
-#'   Rest assured, your privacy is secure.
+#'   All information is stored locally in your system configuration and is never
+#'   uploaded or shared.
 #'
 #' @param provider character, LLM provider. One of "openai",
 #'   "claude", "gemini". Default "openai".
@@ -12,6 +12,7 @@
 #' @param key api-key of your service.
 #' @param model character, model name. If NULL, auto-set from provider default.
 #'
+#' @returns NULL invisibly. Called for side effect of writing the config file.
 #' @examples
 #' \dontrun{
 #'   set_llm(provider = "openai", key = "<your-openai-api-key>", model = "gpt-5.4-mini")
@@ -59,10 +60,10 @@ set_llm <- function(provider = "openai", url = NULL, key = NULL, model = NULL) {
       dir.create(config_dir, showWarnings = FALSE, recursive = TRUE)
       config_file <- file.path(config_dir, "LLMJOIN.yml")
       writeLines(config_content, config_file)
-      cat("LLM services stored in `", config_file, "`.\n", sep = "")
-      cat("  Provider:", provider, "\n")
-      cat("  Model:", model, "\n")
-      cat("  URL:", url, "\n")
+      message("LLM services stored in `", config_file, "`.")
+      message("  Provider: ", provider)
+      message("  Model: ", model)
+      message("  URL: ", url)
     },
     error = function(e) {
       stop("Failed to write config file: ", e$message)
@@ -72,7 +73,7 @@ set_llm <- function(provider = "openai", url = NULL, key = NULL, model = NULL) {
 
 #' Send message to LLM server
 #'
-#' This function send message to LLM model and retrive the result.
+#' This function sends a message to the LLM model and retrieves the result.
 #'
 #' @param .message the message to send.
 #' @param .model character, LLM model to use. By default NULL (uses config value).
@@ -81,7 +82,7 @@ set_llm <- function(provider = "openai", url = NULL, key = NULL, model = NULL) {
 #' @param .timeout Max seconds to communicate with LLM.
 #' @param .verbose logical, print progress messages. Default \code{getOption("llmjoin.verbose", FALSE)}.
 #'
-#' @returns LLM answer, strings
+#' @returns A character string with the LLM's response text.
 #' @export
 #'
 #' @examples
@@ -143,7 +144,7 @@ chat_llm <- function(
   url <- LLMJOIN_CONFIG$LLM_URL
 
   if (.verbose) {
-    cat("Sending request to", provider, "using model", model, "...\n")
+    message("Sending request to ", provider, " using model ", model, "...")
   }
   body <- provider_body(
     provider,
@@ -194,7 +195,7 @@ chat_llm <- function(
         content <- jsonlite::fromJSON(content_text, simplifyVector = FALSE)
         result <- provider_parse(provider, content)
         if (.verbose) {
-          cat("Response received (", nchar(content_text), "bytes)\n", sep = "")
+          message("Response received (", nchar(content_text), " bytes)")
         }
         result
       },

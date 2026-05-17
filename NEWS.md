@@ -1,3 +1,28 @@
+# llmjoin 0.3.0
+
+## Breaking changes
+- Removed `check_joint()` — LLM-based joint validation was unreliable (circular
+  LLM self-validation) and its parsing logic was fragile.
+- Removed `magrittr` dependency. The `%>%` re-export is no longer provided. Use
+  the native R pipe `|>` (available since R 4.1.0).
+
+## Fixes
+- Changed `cat()` to `message()` for user-facing output in `set_llm()` and
+  `chat_llm()`, complying with CRAN best practices.
+- Removed unconditional `cat()` preview from `parse_joint()`.
+- Fixed `joint_prompt()` `@returns` tag (incorrectly stated `data.frame`; now
+  correctly states `character string`).
+- Added missing `@returns` tag for `set_llm()`.
+- Fixed DESCRIPTION: title case ("LLM-Powered Fuzzy Join"), complete description
+  sentence, added `Config/testthat/edition: 3`.
+- Fixed `\dontrun{}` on `joint_prompt()` example (the function is runnable
+  without API configuration).
+- Added `.Rhistory` and `.gitignore` to `.Rbuildignore`.
+- Added `URL:` and `BugReports:` fields to DESCRIPTION.
+- Updated LICENSE year to 2026.
+- Fixed documentation typos ("paring" → "pairing", "joinning" → "joining",
+  "non-existing" → "non-existent").
+
 # llmjoin 0.2.2
 
 ## Breaking changes

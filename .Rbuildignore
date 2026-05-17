@@ -6,3 +6,5 @@
 ^test_output\.txt$
 ^CRAN-SUBMISSION$
 ^cran-comments\.md$
+^\.Rhistory$
+^\.gitignore$
