@@ -4,23 +4,21 @@
 \alias{llm_join}
 \title{Fuzzy join with LLM}
 \usage{
-llm_join(x, y, key1, key2, check = FALSE, ...)
+llm_join(x, y, key1, key2, ...)
 }
 \arguments{
-\item{x}{a `data.frame` to be join on the lhs.}
+\item{x}{a `data.frame` to be joined on the lhs.}
 
-\item{y}{a `data.frame` to be join on the rhs.}
+\item{y}{a `data.frame` to be joined on the rhs.}
 
-\item{key1}{string, name of the key column of data.frame `x` waiting for paring.}
+\item{key1}{string, name of the key column of data.frame `x` waiting for pairing.}
 
-\item{key2}{string, name of the key column of data.frame `y` waiting for paring.}
-
-\item{check}{logical, ask LLM to validate the joint. Default FALSE.}
+\item{key2}{string, name of the key column of data.frame `y` waiting for pairing.}
 
 \item{...}{extra params passed to `chat_llm()`}
 }
 \value{
-the Fuzzy-joined `data.frame`
+the fuzzy-joined `data.frame`
 }
 \description{
 Fuzzy join with LLM
