@@ -20,12 +20,9 @@ set_llm(provider = "openai", url = NULL, key = NULL, model = NULL)
 NULL invisibly. Called for side effect of writing the config file.
 }
 \description{
-Set up your LLM service. Supports OpenAI, Claude (Anthropic),
-  and Gemini (via OpenAI-compatible endpoint). For custom endpoints
-  (Ollama, proxies, DeepSeek, Kimi, etc.), use provider = "openai" with
-  the custom URL.
-  All information is stored locally in your system configuration and is never
-  uploaded or shared.
+Set up your LLM service with native support for OpenAI, Claude (Anthropic), and Gemini (via OpenAI-compatible endpoint).
+  For custom endpoints like Ollama, proxies, DeepSeek, Kimi, and others, use provider = "openai" along with your custom URL to connect through the compactible API interface.
+  All information is stored strictly locally in your system configuration and is never uploaded or shared.
 }
 \examples{
 \dontrun{
