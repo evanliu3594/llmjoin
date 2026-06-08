@@ -25,7 +25,7 @@ Set up your LLM service with native support for OpenAI, Claude (Anthropic), and 
   All information is stored strictly locally in your system configuration and is never uploaded or shared.
 }
 \examples{
-\dontrun{
+\donttest{
   set_llm(provider = "openai", key = "<your-openai-api-key>", model = "gpt-5.4-mini")
 }
 }

@@ -14,7 +14,7 @@ parse_joint(llm_response, key1, key2)
 \item{key2}{string, name of the rhs key column.}
 }
 \value{
-a 2-column `data.frame` mapping values from key1 to key2.
+a 2-column data.frame mapping values from key1 to key2.
 }
 \description{
 Strips markdown fences, extracts the longest consecutive block of

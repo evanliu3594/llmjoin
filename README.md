@@ -36,7 +36,7 @@ set_llm(provider = "openai",
 
 > **Below examples used Deepseek-V4-Flash.**
 
-### Example 1: Numbers ↔ Months matching
+#### Example 1: Numbers ↔ Months matching
 
 Match numeric month codes to month names — the LLM understands that "01" means January.
 
