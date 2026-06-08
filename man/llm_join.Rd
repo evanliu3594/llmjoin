@@ -7,27 +7,27 @@
 llm_join(x, y, key1, key2, ...)
 }
 \arguments{
-\item{x}{a `data.frame` to be joined on the lhs.}
+\item{x}{a data.frame to be joined on the lhs.}
 
-\item{y}{a `data.frame` to be joined on the rhs.}
+\item{y}{a data.frame to be joined on the rhs.}
 
-\item{key1}{string, name of the key column of data.frame `x` waiting for pairing.}
+\item{key1}{string, name of the key column of data.frame x waiting for pairing.}
 
-\item{key2}{string, name of the key column of data.frame `y` waiting for pairing.}
+\item{key2}{string, name of the key column of data.frame y waiting for pairing.}
 
-\item{...}{extra params passed to `chat_llm()`}
+\item{...}{extra params passed to chat_llm()}
 }
 \value{
-the fuzzy-joined `data.frame`
+the fuzzy-joined data.frame
 }
 \description{
 Fuzzy join with LLM
 }
 \examples{
-\dontrun{
+\donttest{
   x <- data.frame(id = c("01", "02", "04"), value = c(10, 20, 40))
   y <- data.frame(month = c("January", "Feb", "May"), amount = c(100, 200, 400))
 
-  llm_join(x, y, key1 = "id", key2 = "month", model = "gpt-4.1-mini")
+  llm_join(x, y, key1 = "id", key2 = "month")
 }
 }

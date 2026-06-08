@@ -7,7 +7,7 @@
 tbl2md(tbl, nm = NULL)
 }
 \arguments{
-\item{tbl}{a `data.frame` object or a vector.}
+\item{tbl}{a data.frame object or a vector.}
 
 \item{nm}{character, only used if `tbl` is a vector.}
 }

@@ -11,7 +11,7 @@
 #'
 #' @returns NULL invisibly. Called for side effect of writing the config file.
 #' @examples
-#' \dontrun{
+#' \donttest{
 #'   set_llm(provider = "openai", key = "<your-openai-api-key>", model = "gpt-5.4-mini")
 #' }
 #' @export
@@ -83,8 +83,8 @@ set_llm <- function(provider = "openai", url = NULL, key = NULL, model = NULL) {
 #' @export
 #'
 #' @examples
-#' \dontrun{
-#' chat_llm("tell a joke.")
+#' \donttest{
+#'   chat_llm("tell a joke.")
 #' }
 chat_llm <- function(
   .message,

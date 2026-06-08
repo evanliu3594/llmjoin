@@ -33,7 +33,7 @@ A character string with the LLM's response text.
 This function sends a message to the LLM model and retrieves the result.
 }
 \examples{
-\dontrun{
-chat_llm("tell a joke.")
+\donttest{
+  chat_llm("tell a joke.")
 }
 }

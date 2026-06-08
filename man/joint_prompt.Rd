@@ -7,9 +7,9 @@
 joint_prompt(x, y)
 }
 \arguments{
-\item{x}{1-column `data.frame` or vector of characters, left hand side of the join}
+\item{x}{1-column data.frame or vector of characters, left hand side of the join}
 
-\item{y}{1-column `data.frame` or vector of characters, right hand side of the join}
+\item{y}{1-column data.frame or vector of characters, right hand side of the join}
 }
 \value{
 A character string containing the matching prompt.
