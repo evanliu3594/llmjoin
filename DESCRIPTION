@@ -9,11 +9,10 @@ Authors@R: c(
       role = c("aut", "cre")
     )
   )
-Description: Resolves ambiguous links between `data.frame`s using large language models (LLMs). Supports matching across spelling variations, translations, and differing levels of precision.
+Description: Resolves ambiguous links between data.frames using large language models (LLMs). Supports matching across spelling variations, translations, and differing levels of precision.
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: false
-RoxygenNote: 7.3.3
 Config/testthat/edition: 3
 Imports:
     httr,
@@ -26,3 +25,4 @@ Depends:
     R (>= 4.2.0)
 URL: https://github.com/evanliu3594/llmjoin
 BugReports: https://github.com/evanliu3594/llmjoin/issues
+Config/roxygen2/version: 8.0.0

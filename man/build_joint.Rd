@@ -7,24 +7,24 @@
 build_joint(x, y, key1, key2, ...)
 }
 \arguments{
-\item{x}{a `data.frame` to be joined on the lhs.}
+\item{x}{a data.frame to be joined on the lhs.}
 
-\item{y}{a `data.frame` to be joined on the rhs.}
+\item{y}{a data.frame to be joined on the rhs.}
 
-\item{key1}{string, name of the key column of data.frame `x` waiting for pairing.}
+\item{key1}{string, name of the key column of data.frame x waiting for pairing.}
 
-\item{key2}{string, name of the key column of data.frame `y` waiting for pairing.}
+\item{key2}{string, name of the key column of data.frame y waiting for pairing.}
 
-\item{...}{extra params passed to `chat_llm()`}
+\item{...}{extra params passed to chat_llm()}
 }
 \value{
-a 2-column `data.frame` mapping values from key1 to key2.
+a 2-column data.frame mapping values from key1 to key2.
 }
 \description{
 Build a fuzzy-join joint data.frame via LLM
 }
 \examples{
-\dontrun{
+\donttest{
   build_joint(
     x = data.frame(x = c("01","02","04")),
     y = data.frame(y = c("January","Feb","May")),

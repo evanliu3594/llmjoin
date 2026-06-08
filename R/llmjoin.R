@@ -1,6 +1,6 @@
 #' Convert a data frame to a markdown table
 #'
-#' @param tbl a `data.frame` object or a vector.
+#' @param tbl a data.frame object or a vector.
 #' @param nm character, only used if `tbl` is a vector.
 #' @returns markdown style table string lines
 #' @export
@@ -34,8 +34,8 @@ tbl2md <- function(tbl, nm = NULL) {
 #'
 #' Generate a prompt to guide the LLM in generating a joint for data frame joining, leveraging the two key columns from the tables to be connected.
 #' As of 2025/04/10, DeepSeek R1 and gpt-4.1-mini showed the best result; other LLMs might fabricate non-existent data in the result.
-#' @param x 1-column `data.frame` or vector of characters, left hand side of the join
-#' @param y 1-column `data.frame` or vector of characters, right hand side of the join
+#' @param x 1-column data.frame or vector of characters, left hand side of the join
+#' @param y 1-column data.frame or vector of characters, right hand side of the join
 #'
 #' @returns A character string containing the matching prompt.
 #' @export
@@ -80,7 +80,7 @@ joint_prompt <- function(x, y) {
 #' @param key1 string, name of the lhs key column.
 #' @param key2 string, name of the rhs key column.
 #'
-#' @returns a 2-column `data.frame` mapping values from key1 to key2.
+#' @returns a 2-column data.frame mapping values from key1 to key2.
 #' @export
 #'
 #' @examples
@@ -97,7 +97,7 @@ parse_joint <- function(llm_response, key1, key2) {
   r <- rle(has_comma)
   best <- which.max(r$lengths * r$values)
   start <- sum(r$lengths[seq_len(best - 1)]) + 1
-  end   <- start + r$lengths[best] - 1
+  end <- start + r$lengths[best] - 1
 
   csv_lines <- lines[start:end]
 
@@ -111,31 +111,40 @@ parse_joint <- function(llm_response, key1, key2) {
   }
 
   tryCatch(
-    readr::read_csv(I(paste(csv_lines, collapse = "\n")),
-                    col_names = c(key1, key2), skip = 1,
-                    col_types = "cc", show_col_types = FALSE,
-                    name_repair = "minimal"),
-    error = \(e) stop(
-      "Failed to parse LLM response as CSV.\n",
-      "Error: ", e$message, "\n",
-      "Raw response:\n", llm_response
-    )
+    readr::read_csv(
+      I(paste(csv_lines, collapse = "\n")),
+      col_names = c(key1, key2),
+      skip = 1,
+      col_types = "cc",
+      show_col_types = FALSE,
+      name_repair = "minimal"
+    ),
+    error = \(e) {
+      stop(
+        "Failed to parse LLM response as CSV.\n",
+        "Error: ",
+        e$message,
+        "\n",
+        "Raw response:\n",
+        llm_response
+      )
+    }
   )
 }
 
 #' Build a fuzzy-join joint data.frame via LLM
 #'
-#' @param x a `data.frame` to be joined on the lhs.
-#' @param y a `data.frame` to be joined on the rhs.
-#' @param key1 string, name of the key column of data.frame `x` waiting for pairing.
-#' @param key2 string, name of the key column of data.frame `y` waiting for pairing.
-#' @param ... extra params passed to `chat_llm()`
+#' @param x a data.frame to be joined on the lhs.
+#' @param y a data.frame to be joined on the rhs.
+#' @param key1 string, name of the key column of data.frame x waiting for pairing.
+#' @param key2 string, name of the key column of data.frame y waiting for pairing.
+#' @param ... extra params passed to chat_llm()
 #'
-#' @returns a 2-column `data.frame` mapping values from key1 to key2.
+#' @returns a 2-column data.frame mapping values from key1 to key2.
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #'   build_joint(
 #'     x = data.frame(x = c("01","02","04")),
 #'     y = data.frame(y = c("January","Feb","May")),
@@ -150,21 +159,21 @@ build_joint <- function(x, y, key1, key2, ...) {
 
 #' Fuzzy join with LLM
 #'
-#' @param x a `data.frame` to be joined on the lhs.
-#' @param y a `data.frame` to be joined on the rhs.
-#' @param key1 string, name of the key column of data.frame `x` waiting for pairing.
-#' @param key2 string, name of the key column of data.frame `y` waiting for pairing.
-#' @param ... extra params passed to `chat_llm()`
+#' @param x a data.frame to be joined on the lhs.
+#' @param y a data.frame to be joined on the rhs.
+#' @param key1 string, name of the key column of data.frame x waiting for pairing.
+#' @param key2 string, name of the key column of data.frame y waiting for pairing.
+#' @param ... extra params passed to chat_llm()
 #'
-#' @returns the fuzzy-joined `data.frame`
+#' @returns the fuzzy-joined data.frame
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #'   x <- data.frame(id = c("01", "02", "04"), value = c(10, 20, 40))
 #'   y <- data.frame(month = c("January", "Feb", "May"), amount = c(100, 200, 400))
 #'
-#'   llm_join(x, y, key1 = "id", key2 = "month", model = "gpt-4.1-mini")
+#'   llm_join(x, y, key1 = "id", key2 = "month")
 #' }
 llm_join <- function(x, y, key1, key2, ...) {
   joint <- build_joint(x, y, key1, key2, ...)
