@@ -1,7 +1,12 @@
 
-# llm-join: Fuzzy Dataframe Join in R with LLMs
+# llmjoin: LLM-Powered Fuzzy Join for R <img src="man/figures/logo.png" align="right" width="150" />
+
+[![CRAN version](https://www.r-pkg.org/badges/version/llmjoin)](https://cran.r-project.org/package=llmjoin)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![R >= 4.2.0](https://img.shields.io/badge/R-%3E%3D4.2.0-blue)](https://www.r-project.org/)
+
 ## Introduction
-llm-join is an R package designed to use Large Language Models (LLMs, such as GPT-5, Claude, DeepSeek, etc.) for fuzzy joining of dataframes. When the key columns of two dataframes have spelling differences, are in different languages, or cannot be matched exactly, llm-join can automatically generate prompts and utilize LLMs to assist in high-quality joining.
+llmjoin is an R package designed to use Large Language Models (LLMs, such as GPT-5, Claude, DeepSeek, etc.) for fuzzy joining of data.frames. When the key columns of two data.frames have spelling differences, are in different languages, or cannot be matched exactly, llmjoin can automatically generate prompts and utilize LLMs to assist in high-quality joining.
 
 ## Installation
 You can install the development version of llmjoin from [GitHub](https://github.com/) with:
