@@ -31,11 +31,11 @@ set_llm(provider = "claude", key = "your-api-key")
 # Gemini (via OpenAI-compatible endpoint)
 set_llm(provider = "gemini", key = "your-api-key")
 
-# Custom endpoint (Ollama, DeepSeek, Kimi, Grok, Qwen, etc.)
+# Custom endpoint (take DeepSeek-V4 as example)
 set_llm(provider = "openai",
-        url = "https://your-custom-endpoint/v1/chat/completions",
+        url = "https://api.deepseek.com/v1/chat/completions",
         key = "your-api-key",
-        model = "your-model-name")
+        model = "deepseek-v4-flash")
 ```
 ### 2. use LLM-JOIN
 
