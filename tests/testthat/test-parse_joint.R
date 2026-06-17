@@ -92,6 +92,8 @@ describe("parse_joint", {
 
       expect_s3_class(result, "data.frame")
       expect_equal(nrow(result), 2)
+      expect_equal(result[["id"]], c("01", "02"))
+      expect_equal(result[["month"]], c("January", "Feb"))
     })
 
   })
@@ -232,6 +234,105 @@ describe("parse_joint", {
       expect_equal(nrow(result), 3)
       expect_equal(result[["a"]], c("France", "Narnia", "Germany"))
       expect_equal(result[["b"]][result[["a"]] == "Narnia"], NA_character_)
+    })
+
+  })
+
+  describe("fabrication defense", {
+
+    it("should filter out LLM-fabricated key1 values not in x_keys", {
+      mock_response <- "01,January\n99,Feb\n04,May"
+
+      expect_warning(
+        result <- parse_joint(mock_response, key1 = "id", key2 = "month",
+                              x_keys = c("01", "02", "04")),
+        "fabricated"
+      )
+
+      expect_equal(nrow(result), 2)
+      expect_equal(result[["id"]], c("01", "04"))
+      expect_equal(result[["month"]], c("January", "May"))
+    })
+
+    it("should filter out LLM-fabricated key2 values not in y_keys", {
+      mock_response <- "01,January\n02,FakeCity\n04,May"
+
+      expect_warning(
+        result <- parse_joint(mock_response, key1 = "id", key2 = "month",
+                              y_keys = c("January", "Feb", "May")),
+        "fabricated"
+      )
+
+      expect_equal(nrow(result), 2)
+      expect_equal(result[["id"]], c("01", "04"))
+    })
+
+    it("should NOT treat empty key2 (NA) as fabrication", {
+      mock_response <- "01,January\n02,\n04,May"
+
+      result <- parse_joint(mock_response, key1 = "id", key2 = "month",
+                            y_keys = c("January", "Feb", "May"))
+
+      expect_equal(nrow(result), 3)
+      expect_true(is.na(result[["month"]][result[["id"]] == "02"]))
+    })
+
+    it("should filter both fabricated key1 and fabricated key2 on different rows", {
+      mock_response <- paste0(
+        "01,January\n",
+        "02,FakeCity\n",
+        "99,Feb\n",
+        "04,May\n",
+        "05,\n"
+      )
+
+      result <- suppressWarnings(
+        parse_joint(mock_response, key1 = "id", key2 = "month",
+                    x_keys = c("01", "02", "04", "05"),
+                    y_keys = c("January", "Feb", "May"))
+      )
+
+      # "02,FakeCity" dropped (fabricated key2)
+      # "99,Feb" dropped (fabricated key1)
+      # Kept: "01,January", "04,May", "05,NA"
+      expect_equal(nrow(result), 3)
+      expect_equal(result[["id"]], c("01", "04", "05"))
+    })
+
+    it("should be backward compatible when x_keys and y_keys are NULL", {
+      mock_response <- "01,January\n02,Feb\n04,May"
+
+      result <- parse_joint(mock_response, key1 = "id", key2 = "month")
+
+      expect_equal(nrow(result), 3)
+      expect_equal(colnames(result), c("id", "month"))
+    })
+
+    it("should return 0-row data.frame when all values are fabricated", {
+      mock_response <- "99,Foo\n88,Bar"
+
+      expect_warning(
+        result <- parse_joint(mock_response, key1 = "id", key2 = "month",
+                              x_keys = c("01", "02"),
+                              y_keys = c("January", "Feb")),
+        "fabricated"
+      )
+
+      expect_equal(nrow(result), 0)
+      expect_s3_class(result, "data.frame")
+      expect_equal(colnames(result), c("id", "month"))
+    })
+
+    it("should compare key values after coercing to character", {
+      mock_response <- "1.5,Jan\n3,Mar"
+
+      # numeric x_keys — should still match their character representation
+      result <- parse_joint(mock_response, key1 = "weight", key2 = "month",
+                            x_keys = c(1.5, 3, 5),
+                            y_keys = c("Jan", "Feb", "Mar"))
+
+      expect_equal(nrow(result), 2)
+      expect_equal(result[["weight"]], c("1.5", "3"))
     })
 
   })
