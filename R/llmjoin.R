@@ -79,13 +79,20 @@ joint_prompt <- function(x, y) {
 #' @param llm_response character, raw response from the LLM.
 #' @param key1 string, name of the lhs key column.
 #' @param key2 string, name of the rhs key column.
+#' @param x_keys character vector of unique key values from the left-hand-side
+#'   data.frame. If provided, values in the parsed key1 column not found in
+#'   this set are considered LLM fabrications and dropped with a warning.
+#' @param y_keys character vector of unique key values from the right-hand-side
+#'   data.frame. If provided, values in the parsed key2 column not found in
+#'   this set (excluding NA for "no match") are considered LLM fabrications
+#'   and dropped with a warning.
 #'
 #' @returns a 2-column data.frame mapping values from key1 to key2.
 #' @export
 #'
 #' @examples
 #' parse_joint("01,January\n02,Feb\n04,May", key1 = "id", key2 = "month")
-parse_joint <- function(llm_response, key1, key2) {
+parse_joint <- function(llm_response, key1, key2, x_keys = NULL, y_keys = NULL) {
   txt <- gsub("```\\w*\\n?|\\n?```", "", llm_response)
   lines <- strsplit(txt, "\n")[[1]]
   has_comma <- grepl(",", lines, fixed = TRUE) & nchar(trimws(lines)) > 0
@@ -110,14 +117,16 @@ parse_joint <- function(llm_response, key1, key2) {
     csv_lines <- c(paste(key1, key2, sep = ","), csv_lines)
   }
 
-  tryCatch(
-    readr::read_csv(
-      I(paste(csv_lines, collapse = "\n")),
-      col_names = c(key1, key2),
-      skip = 1,
-      col_types = "cc",
-      show_col_types = FALSE,
-      name_repair = "minimal"
+  result <- tryCatch(
+    utils::read.csv(
+      text = paste(csv_lines, collapse = "\n"),
+      col.names = c(key1, key2),
+      colClasses = "character",
+      header = TRUE,
+      stringsAsFactors = FALSE,
+      na.strings = "",
+      strip.white = TRUE,
+      check.names = FALSE
     ),
     error = \(e) {
       stop(
@@ -130,6 +139,44 @@ parse_joint <- function(llm_response, key1, key2) {
       )
     }
   )
+
+  if (!is.null(x_keys)) {
+    x_keys <- as.character(unique(x_keys))
+    unknown <- setdiff(result[[key1]], c(x_keys, NA_character_))
+    if (length(unknown) > 0) {
+      shown <- utils::head(unknown, 5)
+      msg <- sprintf(
+        "Dropped %d LLM-fabricated value(s) in '%s' not found in original data: %s",
+        length(unknown), key1,
+        paste(sQuote(shown), collapse = ", ")
+      )
+      if (length(unknown) > 5) {
+        msg <- paste0(msg, sprintf(" ... and %d more", length(unknown) - 5))
+      }
+      warning(msg)
+      result <- result[!result[[key1]] %in% unknown, , drop = FALSE]
+    }
+  }
+
+  if (!is.null(y_keys)) {
+    y_keys <- as.character(unique(y_keys))
+    unknown <- setdiff(result[[key2]], c(y_keys, NA_character_))
+    if (length(unknown) > 0) {
+      shown <- utils::head(unknown, 5)
+      msg <- sprintf(
+        "Dropped %d LLM-fabricated value(s) in '%s' not found in original data: %s",
+        length(unknown), key2,
+        paste(sQuote(shown), collapse = ", ")
+      )
+      if (length(unknown) > 5) {
+        msg <- paste0(msg, sprintf(" ... and %d more", length(unknown) - 5))
+      }
+      warning(msg)
+      result <- result[!result[[key2]] %in% unknown, , drop = FALSE]
+    }
+  }
+
+  result
 }
 
 #' Build a fuzzy-join joint data.frame via LLM
@@ -154,7 +201,9 @@ parse_joint <- function(llm_response, key1, key2) {
 build_joint <- function(x, y, key1, key2, ...) {
   llm_response <- joint_prompt(unique(x[key1]), unique(y[key2])) |>
     chat_llm(...)
-  parse_joint(llm_response, key1, key2)
+  parse_joint(llm_response, key1, key2,
+              x_keys = unique(x[[key1]]),
+              y_keys = unique(y[[key2]]))
 }
 
 #' Fuzzy join with LLM

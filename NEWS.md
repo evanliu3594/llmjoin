@@ -1,3 +1,9 @@
+# llmjoin 0.3.1
+
+## changes
+- Removed `readr` dependency. Replaced `readr::read_csv()` with base R `utils::read.csv()` in `parse_joint()`, reducing transitive dependencies from ~30 to ~7.
+- Added LLM fabrication defense in `parse_joint()`. New optional parameters `x_keys` and `y_keys` validate parsed values against original key columns — fabricated values are dropped with a warning. `build_joint()` and `llm_join()` enable this automatically.
+
 # llmjoin 0.3.0
 
 ## changes

@@ -9,7 +9,12 @@
 llmjoin is an R package designed to use Large Language Models (LLMs, such as GPT-5, Claude, DeepSeek, etc.) for fuzzy joining of data.frames. When the key columns of two data.frames have spelling differences, are in different languages, or cannot be matched exactly, llmjoin can automatically generate prompts and utilize LLMs to assist in high-quality joining.
 
 ## Installation
-You can install the development version of llmjoin from [GitHub](https://github.com/) with:
+You can install the released version of llmjoin from [CRAN](https://cran.r-project.org/package=llmjoin) with:
+```R
+install.packages("llmjoin")
+```
+
+Or install the development version from [GitHub](https://github.com/) with:
 ```R
 devtools::install_github("evanliu3594/llmjoin")
 ```
@@ -106,10 +111,17 @@ y <- data.frame(month = c("January", "Feb", "May"), amount = c(100, 200, 400))
 
 joint_prompt(unique(x["id"]), unique(y["month"])) |> writeClipboard()
 ```
-Paste the prompts to ask your LLM model, and copy the answer, going back to R and continue run:
+Paste the prompts to ask your LLM model, and copy the answer. Then in R:
 
 ```R
-joint <- parse_joint(readr::clipboard(), key1 = "id", key2 = "month")
+joint <- parse_joint(
+  switch(Sys.info()[["sysname"]],
+    Windows = paste(readClipboard(), collapse = "\n"),
+    Darwin  = paste(system("pbpaste", intern = TRUE), collapse = "\n"),
+    paste(readLines(stdin()), collapse = "\n")   # Linux fallback
+  ),
+  key1 = "id", key2 = "month"
+)
 
 Reduce(\(x, y) merge(x, y, all.x = TRUE), list(x, joint, y))
 #     month id value amount
