@@ -4,6 +4,12 @@
 - Removed `readr` dependency. Replaced `readr::read_csv()` with base R `utils::read.csv()` in `parse_joint()`, reducing transitive dependencies from ~30 to ~7.
 - Added LLM fabrication defense in `parse_joint()`. New optional parameters `x_keys` and `y_keys` validate parsed values against original key columns — fabricated values are dropped with a warning. `build_joint()` and `llm_join()` enable this automatically.
 
+## Fixes
+- `llm_join()` now merges on the explicit keys: `key1` first, then `key2`. Previously both merges relied on the intersection of same-named columns, so same-named non-key columns in `x` and `y` silently mis-joined or dropped `y` data, and a column named `key2` in `x` silently matched nothing. The README manual workflow now shows the equivalent explicit-`by` merges.
+- `parse_joint()` header detection now recognizes quoted (`"id","month"`) and generic (`value1,value2`, `column1,column2`, ...) header rows and strips them instead of leaking them into the parsed data.
+- `tbl2md()` no longer silently renders an empty table for factor vectors.
+- `provider_parse()` (claude) now concatenates all text blocks in order; long replies split across multiple blocks are no longer truncated after the first.
+
 # llmjoin 0.3.0
 
 ## changes

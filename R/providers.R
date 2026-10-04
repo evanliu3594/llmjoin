@@ -96,7 +96,10 @@ provider_parse <- function(provider, parsed_json) {
       if (length(text_blocks) == 0) {
         stop("Invalid response structure: no text block found")
       }
-      as.character(text_blocks[[1]]$text)
+      paste(
+        vapply(text_blocks, \(b) as.character(b$text), character(1)),
+        collapse = ""
+      )
     },
     stop("Unknown provider: ", provider)
   )

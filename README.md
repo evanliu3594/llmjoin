@@ -123,7 +123,8 @@ joint <- parse_joint(
   key1 = "id", key2 = "month"
 )
 
-Reduce(\(x, y) merge(x, y, all.x = TRUE), list(x, joint, y))
+# pass `by` explicitly: never rely on the intersection of same-named columns
+merge(merge(x, joint, by = "id", all.x = TRUE), y, by = "month", all.x = TRUE)
 #     month id value amount
 # 1     Feb 02    20    200
 # 2 January 01    10    100

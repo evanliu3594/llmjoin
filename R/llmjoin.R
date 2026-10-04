@@ -21,7 +21,7 @@ tbl2md <- function(tbl, nm = NULL) {
     do.call(paste, c(tbl, sep = " | "))
   } else if (is.data.frame(tbl) & length(tbl) == 1) {
     tbl[[1]]
-  } else if (is.vector(tbl)) {
+  } else if (is.vector(tbl) || is.factor(tbl)) {
     tbl
   }
 
@@ -108,14 +108,22 @@ parse_joint <- function(llm_response, key1, key2, x_keys = NULL, y_keys = NULL) 
 
   csv_lines <- lines[start:end]
 
-  first_fields <- tolower(trimws(strsplit(csv_lines[1], ",")[[1]]))
-  has_header <- length(first_fields) == 2 &&
-    first_fields[1] == tolower(key1) &&
-    first_fields[2] == tolower(key2)
+  first_raw <- trimws(strsplit(csv_lines[1], ",")[[1]])
+  first_low <- tolower(gsub('^"(.*)"$', "\\1", first_raw))
 
-  if (!has_header) {
-    csv_lines <- c(paste(key1, key2, sep = ","), csv_lines)
+  is_key_header <- length(first_raw) == 2 &&
+    first_low[1] == tolower(key1) &&
+    first_low[2] == tolower(key2)
+
+  generic_rx <- "^(value|column|col|field|var|key|attr|attribute|item|entry)[_.-]?0*[0-9]+$"
+  is_generic_header <- length(first_raw) == 2 &&
+    length(unique(first_low)) == 2 &&
+    all(grepl(generic_rx, first_low))
+
+  if (is_key_header || is_generic_header) {
+    csv_lines <- csv_lines[-1]
   }
+  csv_lines <- c(paste(key1, key2, sep = ","), csv_lines)
 
   result <- tryCatch(
     utils::read.csv(
@@ -226,6 +234,10 @@ build_joint <- function(x, y, key1, key2, ...) {
 #' }
 llm_join <- function(x, y, key1, key2, ...) {
   joint <- build_joint(x, y, key1, key2, ...)
-  result <- merge(x, joint, all.x = TRUE)
-  merge(result, y, all.x = TRUE)
+  result <- merge(x, joint, by = key1, all.x = TRUE)
+  # If x already contains a column named key2, merge() renamed joint's key2
+  # column to <key2>.y; detect the actual name before the second merge.
+  k2 <- key2
+  if (!k2 %in% names(result)) k2 <- paste0(key2, ".y")
+  merge(result, y, by.x = k2, by.y = key2, all.x = TRUE)
 }

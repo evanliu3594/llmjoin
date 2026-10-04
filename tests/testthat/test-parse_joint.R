@@ -138,6 +138,48 @@ describe("parse_joint", {
       expect_equal(nrow(result), 1)
     })
 
+    it("should strip a quoted header row (audit #2)", {
+      # Given: the LLM echoes the key names as a double-quoted CSV header line
+      mock_response <- '"id","month"\n01,January\n02,Feb'
+      # When:  parse_joint(mock_response, key1 = "id", key2 = "month") —
+      #   manual README workflow, no x_keys/y_keys
+      # Then:  the quoted header is consumed as a header — exactly 2 data
+      #   rows, and neither "id" nor "month" appears as a data value
+      result <- parse_joint(mock_response, key1 = "id", key2 = "month")
+
+      expect_equal(nrow(result), 2)
+      expect_equal(result[["id"]], c("01", "02"))
+      expect_equal(result[["month"]], c("January", "Feb"))
+    })
+
+    it("should strip a generic header row (audit #2)", {
+      # Given: the LLM invents a generic two-column header instead of key1,key2
+      mock_response <- "value1,value2\n01,January\n02,Feb"
+      # When:  parse_joint(mock_response, key1 = "id", key2 = "month")
+      # Then:  the generic header is consumed — exactly 2 data rows
+      result <- parse_joint(mock_response, key1 = "id", key2 = "month")
+
+      expect_equal(nrow(result), 2)
+      expect_equal(result[["id"]], c("01", "02"))
+      expect_equal(result[["month"]], c("January", "Feb"))
+    })
+
+    it("should return clean rows for the manual no-x_keys workflow (audit #2)", {
+      # Given: a realistic manual-workflow response (generic header + data)
+      mock_response <- paste0(
+        "column1,column2\n",
+        "code01,January\ncode02,Feb\ncode04,May"
+      )
+      # When:  parse_joint(mock_response, key1 = "id", key2 = "month") with
+      #   no x_keys/y_keys
+      # Then:  exactly the 3 data rows — no header-like garbage leaked
+      result <- parse_joint(mock_response, key1 = "id", key2 = "month")
+
+      expect_equal(nrow(result), 3)
+      expect_equal(result[["id"]], c("code01", "code02", "code04"))
+      expect_false(any(grepl("column1", result[["id"]], fixed = TRUE)))
+    })
+
   })
 
   describe("error handling", {
