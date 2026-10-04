@@ -40,5 +40,5 @@ testthat::test_local():FAIL 0 | WARN 0 | SKIP 0 | PASS 78。所有 bug 结论均
 
 ## 遗留与下一步
 - 上述 8 个问题均未修复;优先修 #1(一行改动、影响核心语义)。
-- 原协作说明 的架构描述当时已大面积过时(.thinking、validate_llm_config 等已在 0.2.2 移除),
-  已在下一轮换新 AGENTS.md 时修正。
+- 原协作说明的架构描述当时已大面积过时(.thinking、validate_llm_config 等已在 0.2.2 移除),
+  已在下一轮迁移 AGENTS.md 时修正。
