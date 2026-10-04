@@ -2,6 +2,8 @@
 ^\.Rproj\.user$
 ^LICENSE\.md$
 ^AGENTS\.md$
+^R/AGENTS\.md$
+^tests/AGENTS\.md$
 ^handoff$
 ^test_output\.txt$
 ^CRAN-SUBMISSION$
