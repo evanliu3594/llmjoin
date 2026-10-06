@@ -82,10 +82,13 @@ joint_prompt <- function(x, y) {
 #' @param x_keys character vector of unique key values from the left-hand-side
 #'   data.frame. If provided, values in the parsed key1 column not found in
 #'   this set are considered LLM fabrications and dropped with a warning.
+#'   The literal string "NA" is accepted when the key set contains actual NA
+#'   values.
 #' @param y_keys character vector of unique key values from the right-hand-side
 #'   data.frame. If provided, values in the parsed key2 column not found in
 #'   this set (excluding NA for "no match") are considered LLM fabrications
-#'   and dropped with a warning.
+#'   and dropped with a warning. The literal string "NA" is accepted when the
+#'   key set contains actual NA values.
 #'
 #' @returns a 2-column data.frame mapping values from key1 to key2.
 #' @export
@@ -150,7 +153,12 @@ parse_joint <- function(llm_response, key1, key2, x_keys = NULL, y_keys = NULL) 
 
   if (!is.null(x_keys)) {
     x_keys <- as.character(unique(x_keys))
-    unknown <- setdiff(result[[key1]], c(x_keys, NA_character_))
+    allowed <- c(x_keys, NA_character_)
+    # audit #5: tbl2md renders actual NA keys as the string "NA"; a faithful
+    # LLM echo is not fabrication. Lift "NA" only when the key set has actual
+    # NA, so the whitelist is not weakened unconditionally (P0.3).
+    if (anyNA(x_keys)) allowed <- c(allowed, "NA")
+    unknown <- setdiff(result[[key1]], allowed)
     if (length(unknown) > 0) {
       shown <- utils::head(unknown, 5)
       msg <- sprintf(
@@ -168,7 +176,12 @@ parse_joint <- function(llm_response, key1, key2, x_keys = NULL, y_keys = NULL) 
 
   if (!is.null(y_keys)) {
     y_keys <- as.character(unique(y_keys))
-    unknown <- setdiff(result[[key2]], c(y_keys, NA_character_))
+    allowed <- c(y_keys, NA_character_)
+    # audit #5: tbl2md renders actual NA keys as the string "NA"; a faithful
+    # LLM echo is not fabrication. Lift "NA" only when the key set has actual
+    # NA, so the whitelist is not weakened unconditionally (P0.3).
+    if (anyNA(y_keys)) allowed <- c(allowed, "NA")
+    unknown <- setdiff(result[[key2]], allowed)
     if (length(unknown) > 0) {
       shown <- utils::head(unknown, 5)
       msg <- sprintf(
@@ -187,12 +200,37 @@ parse_joint <- function(llm_response, key1, key2, x_keys = NULL, y_keys = NULL) 
   result
 }
 
+#' Validate a key argument against a data.frame's column names
+#'
+#' Internal helper for build_joint(): stops with an actionable message when a
+#' key argument is not a single non-NA string or does not name a column of df.
+#' @noRd
+.validate_key <- function(key, arg, df) {
+  target <- if (arg == "key1") "x" else "y"
+  if (!is.character(key) || length(key) != 1 || is.na(key)) {
+    stop(
+      "'", arg, "' must be a single non-NA string naming a column of ", target,
+      ". Check the '", arg, "' argument."
+    )
+  }
+  if (!key %in% names(df)) {
+    stop(
+      "'", arg, "' column '", key, "' not found in ", target,
+      ". Available columns: ",
+      if (length(names(df)) > 0) paste(sQuote(names(df)), collapse = ", ") else "(none)",
+      ". Check the '", arg, "' argument or run names() on ", target, "."
+    )
+  }
+}
+
 #' Build a fuzzy-join joint data.frame via LLM
 #'
 #' @param x a data.frame to be joined on the lhs.
 #' @param y a data.frame to be joined on the rhs.
-#' @param key1 string, name of the key column of data.frame x waiting for pairing.
-#' @param key2 string, name of the key column of data.frame y waiting for pairing.
+#' @param key1 string, name of the key column of data.frame x waiting for
+#'   pairing. Must name an existing column in x.
+#' @param key2 string, name of the key column of data.frame y waiting for
+#'   pairing. Must name an existing column in y.
 #' @param ... extra params passed to chat_llm()
 #'
 #' @returns a 2-column data.frame mapping values from key1 to key2.
@@ -207,6 +245,20 @@ parse_joint <- function(llm_response, key1, key2, x_keys = NULL, y_keys = NULL) 
 #'   )
 #' }
 build_joint <- function(x, y, key1, key2, ...) {
+  if (!is.data.frame(x)) {
+    stop(
+      "'x' must be a data.frame, not ", class(x)[1],
+      ". Check the 'x' argument."
+    )
+  }
+  if (!is.data.frame(y)) {
+    stop(
+      "'y' must be a data.frame, not ", class(y)[1],
+      ". Check the 'y' argument."
+    )
+  }
+  .validate_key(key1, "key1", x)
+  .validate_key(key2, "key2", y)
   llm_response <- joint_prompt(unique(x[key1]), unique(y[key2])) |>
     chat_llm(...)
   parse_joint(llm_response, key1, key2,

@@ -11,9 +11,11 @@ build_joint(x, y, key1, key2, ...)
 
 \item{y}{a data.frame to be joined on the rhs.}
 
-\item{key1}{string, name of the key column of data.frame x waiting for pairing.}
+\item{key1}{string, name of the key column of data.frame x waiting for
+pairing. Must name an existing column in x.}
 
-\item{key2}{string, name of the key column of data.frame y waiting for pairing.}
+\item{key2}{string, name of the key column of data.frame y waiting for
+pairing. Must name an existing column in y.}
 
 \item{...}{extra params passed to chat_llm()}
 }

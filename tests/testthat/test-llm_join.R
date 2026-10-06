@@ -85,4 +85,31 @@ describe("llm_join", {
     expect_equal(result$amount[!na_row], 100)
   })
 
+  it("keeps NA-key rows unmatched when the LLM echoes 'NA' (audit #5)", {
+    # Given: x's key column contains actual NA (rendered "NA" in the prompt);
+    #   the LLM echoes the row as "NA,Feb" instead of declining
+    x <- data.frame(id = c("01", NA), value = c(10, 20))
+    y <- data.frame(month = c("January", "Feb"), amount = c(100, 200))
+    local_mocked_bindings(
+      chat_llm = function(...) "01,January\nNA,Feb",
+      .package = "llmjoin"
+    )
+    # When:  llm_join(x, y, key1 = "id", key2 = "month")
+    # Then:  no fabrication warning; 2 rows; the real-NA key row stays
+    #   unmatched (its month/amount are NA) because the joint key1 holds the
+    #   literal string "NA", which never matches real NA; the "01" row joins
+    #   normally.
+    #   NOTE (R/AGENTS.md): base merge joins real-NA keys to real-NA keys —
+    #   this fixture deliberately keeps NA off y's key column so the assertion
+    #   only relies on string-"NA" vs real-NA never matching (verified 4.6.1).
+    result <- expect_no_warning(llm_join(x, y, key1 = "id", key2 = "month"))
+    expect_equal(nrow(result), 2)
+    expect_equal(sum(is.na(result$id)), 1)
+    na_row <- is.na(result$id)
+    expect_true(is.na(result$month[na_row]))
+    expect_true(is.na(result$amount[na_row]))
+    expect_equal(result$month[!na_row], "January")
+    expect_equal(result$amount[!na_row], 100)
+  })
+
 })

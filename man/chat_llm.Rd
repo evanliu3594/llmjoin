@@ -14,7 +14,11 @@ chat_llm(
 )
 }
 \arguments{
-\item{.message}{the message to send.}
+\item{.message}{the message to send: character, or any input coercible with
+\code{\link{as.character}}. A length > 1 input is pasted into a single
+string separated by newlines, and NA elements are treated as blank lines.
+Missing, NULL, zero-length, or all-blank input (after trimming whitespace)
+raises an error.}
 
 \item{.model}{character, LLM model to use. By default NULL (uses config value).}
 

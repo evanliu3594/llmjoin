@@ -379,4 +379,96 @@ describe("parse_joint", {
 
   })
 
+  describe("NA key echo handling (audit #5)", {
+
+    it("should accept an 'NA' echo for key1 when the x key column has actual NA", {
+      # Given: x key column contains actual NA (tbl2md renders it as "NA" in
+      #   the prompt); the LLM faithfully echoes the row as "NA,Feb"
+      mock_response <- "01,January\nNA,Feb"
+      # When:  parse_joint(mock_response, key1 = "id", key2 = "month",
+      #          x_keys = c("01", NA))
+      # Then:  no fabrication warning; 2 rows kept; key1 = c("01", "NA") —
+      #   the string "NA" is kept as-is (matching happens downstream in merge)
+      expect_no_warning(
+        result <- parse_joint(mock_response, key1 = "id", key2 = "month",
+                              x_keys = c("01", NA))
+      )
+      expect_equal(nrow(result), 2)
+      expect_equal(result[["id"]], c("01", "NA"))
+      expect_equal(result[["month"]], c("January", "Feb"))
+    })
+
+    it("should accept an 'NA' echo for key2 when the y key column has actual NA", {
+      # Given: y key column contains actual NA; the LLM echoes "02,NA"
+      mock_response <- "01,January\n02,NA"
+      # When:  parse_joint(mock_response, key1 = "id", key2 = "month",
+      #          y_keys = c("January", NA))
+      # Then:  no fabrication warning; 2 rows; month = c("January", "NA")
+      expect_no_warning(
+        result <- parse_joint(mock_response, key1 = "id", key2 = "month",
+                              y_keys = c("January", NA))
+      )
+      expect_equal(nrow(result), 2)
+      expect_equal(result[["id"]], c("01", "02"))
+      expect_equal(result[["month"]], c("January", "NA"))
+    })
+
+    it("should keep normal values passing the whitelist (regression)", {
+      # Given: no NA anywhere; a faithful echo of one row
+      # When:  parse_joint("01,January", key1 = "id", key2 = "month",
+      #          x_keys = "01", y_keys = "January")
+      # Then:  no warning; 1 row
+      expect_no_warning(
+        result <- parse_joint("01,January", key1 = "id", key2 = "month",
+                              x_keys = "01", y_keys = "January")
+      )
+      expect_equal(nrow(result), 1)
+      expect_equal(result[["id"]], "01")
+      expect_equal(result[["month"]], "January")
+    })
+
+    it("should still flag 'NA' as fabrication when the key set has no actual NA and no literal 'NA'", {
+      # Given: x key column has neither actual NA nor a literal "NA" value
+      # When:  parse_joint("01,January\nNA,Feb", ..., x_keys = c("01", "02"))
+      # Then:  fabrication warning fires; the "NA" row is dropped (1 row left)
+      #   — the whitelist must not be weakened unconditionally (root P0.3)
+      expect_warning(
+        result <- parse_joint("01,January\nNA,Feb", key1 = "id", key2 = "month",
+                              x_keys = c("01", "02")),
+        "fabricated"
+      )
+      expect_equal(nrow(result), 1)
+      expect_equal(result[["id"]], "01")
+      expect_equal(result[["month"]], "January")
+    })
+
+    it("should treat 'NA' as a literal value when the key set has both actual NA and a literal 'NA'", {
+      # Given: x key column = c("01", NA, "NA") — e.g. country code "NA" plus
+      #   a genuine missing value
+      # When:  parse_joint("01,January\nNA,Feb", ..., x_keys = c("01", NA, "NA"))
+      # Then:  no warning; 2 rows; the echoed "NA" stays the literal string
+      expect_no_warning(
+        result <- parse_joint("01,January\nNA,Feb", key1 = "id", key2 = "month",
+                              x_keys = c("01", NA, "NA"))
+      )
+      expect_equal(nrow(result), 2)
+      expect_equal(result[["id"]], c("01", "NA"))
+      expect_equal(result[["month"]], c("January", "Feb"))
+    })
+
+    it("should accept an 'NA' echo when the key set has only a literal 'NA' (regression)", {
+      # Given: x key column = c("01", "NA") — the literal "NA" is already
+      #   whitelisted by exact string match
+      # When:  parse_joint("01,January\nNA,Feb", ..., x_keys = c("01", "NA"))
+      # Then:  no warning; 2 rows
+      expect_no_warning(
+        result <- parse_joint("01,January\nNA,Feb", key1 = "id", key2 = "month",
+                              x_keys = c("01", "NA"))
+      )
+      expect_equal(nrow(result), 2)
+      expect_equal(result[["id"]], c("01", "NA"))
+    })
+
+  })
+
 })

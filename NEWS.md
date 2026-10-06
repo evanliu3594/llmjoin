@@ -9,6 +9,10 @@
 - `parse_joint()` header detection now recognizes quoted (`"id","month"`) and generic (`value1,value2`, `column1,column2`, ...) header rows and strips them instead of leaking them into the parsed data.
 - `tbl2md()` no longer silently renders an empty table for factor vectors.
 - `provider_parse()` (claude) now concatenates all text blocks in order; long replies split across multiple blocks are no longer truncated after the first.
+- `parse_joint()` no longer flags the string `NA` echoed by the LLM for rows whose key value is actual `NA` (rendered as `NA` in the prompt) as a fabrication. The whitelist is lifted only when the key set contains actual `NA` values; key sets without `NA` keep the strict filtering.
+- `chat_llm()` now accepts any non-empty `.message`: elements are coerced via `as.character()`, `NA` elements become blank lines, and a length > 1 vector is pasted into one newline-separated string before sending. Missing, NULL, zero-length or all-blank input raises an error naming `.message` with fix guidance (previously a length > 1 vector leaked an internal "condition has length > 1" error).
+- `build_joint()` (and therefore `llm_join()`) validates `key1`/`key2` up front: a misspelled key now errors naming the argument, the offending value and the available columns instead of the opaque "undefined columns selected"; passing a non-data.frame `x`/`y` also errors naming the argument. Validation runs before the LLM call.
+- README: the manual workflow example no longer uses the Windows-only `writeClipboard()`; the prompt prints to the console on all platforms.
 
 # llmjoin 0.3.0
 

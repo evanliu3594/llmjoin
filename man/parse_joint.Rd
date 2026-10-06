@@ -15,12 +15,15 @@ parse_joint(llm_response, key1, key2, x_keys = NULL, y_keys = NULL)
 
 \item{x_keys}{character vector of unique key values from the left-hand-side
 data.frame. If provided, values in the parsed key1 column not found in
-this set are considered LLM fabrications and dropped with a warning.}
+this set are considered LLM fabrications and dropped with a warning.
+The literal string "NA" is accepted when the key set contains actual NA
+values.}
 
 \item{y_keys}{character vector of unique key values from the right-hand-side
 data.frame. If provided, values in the parsed key2 column not found in
 this set (excluding NA for "no match") are considered LLM fabrications
-and dropped with a warning.}
+and dropped with a warning. The literal string "NA" is accepted when the
+key set contains actual NA values.}
 }
 \value{
 a 2-column data.frame mapping values from key1 to key2.

@@ -72,7 +72,11 @@ set_llm <- function(provider = "openai", url = NULL, key = NULL, model = NULL) {
 #'
 #' This function sends a message to the LLM model and retrieves the result.
 #'
-#' @param .message the message to send.
+#' @param .message the message to send: character, or any input coercible with
+#'   \code{\link{as.character}}. A length > 1 input is pasted into a single
+#'   string separated by newlines, and NA elements are treated as blank lines.
+#'   Missing, NULL, zero-length, or all-blank input (after trimming whitespace)
+#'   raises an error.
 #' @param .model character, LLM model to use. By default NULL (uses config value).
 #' @param .temperature OpenAI style randomness control (0~1), by default 0.
 #' @param .max_tokens Max tokens to spend.
@@ -94,8 +98,20 @@ chat_llm <- function(
   .timeout = 300,
   .verbose = getOption("llmjoin.verbose", FALSE)
 ) {
-  if (missing(.message) || is.null(.message) || .message == "") {
-    stop("Message cannot be empty")
+  if (missing(.message) || is.null(.message) || length(.message) == 0) {
+    stop(
+      "'.message' is required. Pass the prompt text, ",
+      'e.g. chat_llm(.message = "tell a joke.")'
+    )
+  }
+  msg <- as.character(.message)
+  msg[is.na(msg)] <- ""
+  .message <- paste(msg, collapse = "\n")
+  if (nchar(trimws(.message)) == 0) {
+    stop(
+      "'.message' must contain non-blank text; all elements were empty or NA. ",
+      'Pass the prompt text, e.g. chat_llm(.message = "tell a joke.")'
+    )
   }
 
   if (.temperature < 0 || .temperature > 1) {
@@ -146,7 +162,7 @@ chat_llm <- function(
   body <- provider_body(
     provider,
     model,
-    as.character(.message),
+    .message,
     .temperature,
     .max_tokens
   )
