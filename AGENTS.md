@@ -43,7 +43,7 @@ llmjoin:用 LLM 做数据框模糊连接(拼写变体、跨语言、精度差异
    - 新增依赖必须证明必要性并评估传递依赖成本;本包卖点是依赖极简(Imports: httr、jsonlite、config)。
    - 用户可见输出用 `message()` / `warning()` / `stop()`,禁止 `cat()`。
    - 严禁提交 API key、密钥或真实配置文件。
-2. **测试红线**:交付前 `testthat::test_local()` 必须全绿(当前基线:205 项断言,0 失败);测试不得依赖真实 LLM 服务,一律用 `local_mocked_bindings()` 打桩。
+2. **测试红线**:交付前 `testthat::test_local()` 必须全绿(当前基线:281 项断言,0 失败);测试不得依赖真实 LLM 服务,一律用 `local_mocked_bindings()` 打桩。
 3. **防伪造校验是安全特性**:`parse_joint()` 的 `x_keys` / `y_keys` 白名单过滤不得移除或弱化;`build_joint()` / `llm_join()` 必须默认传键值集合。
 4. **API 兼容**:导出函数的签名或语义变更必须记入 NEWS.md 当前版本段,并说明迁移方式。
 5. **base R 优先**:禁止引入 tidyverse / magrittr / readr;管道用 `|>`,匿名函数用 `\(x)`,字符串处理优先 base 函数。
@@ -85,12 +85,18 @@ llmjoin:用 LLM 做数据框模糊连接(拼写变体、跨语言、精度差异
   (URL/key/provider 必填,无缓存验证);`.message` 接受任意可强转输入,元素 as.character 后
   NA 置空、向量按换行 paste 成单串,missing/NULL/零长/全空白报错点名参数。
   默认 `.max_tokens = 30000`、`.timeout = 300`、
-  `.temperature = 0`(越界自动截断并警告)。thinking / reasoning 模式已在 0.2.2 移除,不再支持。
-- **Provider 层** `R/providers.R`:`.providers` 注册表(openai / claude / gemini)→
+  `.temperature = 0`(越界自动截断并警告;openai gpt-5+/o 系模型不发 temperature,
+  非 0 时警告被忽略,见 Provider 层)。包内 thinking / reasoning 输出模式已在
+  0.2.2 移除,不再支持。
+- **Provider 层** `R/providers.R`:`.providers` 注册表(openai / claude / gemini / deepseek)→
   base_url、endpoint、default_model、auth_type。四个内部函数:
-  `provider_headers()`(openai/gemini 走 Bearer;claude 走 `x-api-key` + `anthropic-version`)、
-  `provider_body()`(请求体)、`provider_parse()`(响应解析;claude 过滤 thinking block,
-  按序拼接全部 text block)、
+  `provider_headers()`(openai/gemini/deepseek 走 Bearer;claude 走 `x-api-key` + `anthropic-version`)、
+  `provider_body()`(请求体;openai 模型名匹配 `^(o[0-9]|gpt-[5-9])` 的 GPT-5+/o 系发
+  `max_completion_tokens` 并省略 temperature,其余模型维持 `max_tokens`+temperature——
+  第三方兼容端点经 provider="openai" 接入,不得整体切换)、
+  `provider_parse()`(响应解析;claude 过滤 thinking block,按序拼接全部 text block;
+  截断回复警告——openai/gemini/deepseek `finish_reason=="length"`、claude
+  `stop_reason=="max_tokens"`)、
   `provider_url()`。新增 provider = 注册表加一项 + 四个函数各加一个 case。
 - **Join 层** `R/llmjoin.R`:
   `tbl2md()`(data.frame/向量 → markdown 表)→
@@ -99,7 +105,8 @@ llmjoin:用 LLM 做数据框模糊连接(拼写变体、跨语言、精度差异
   `.validate_key()` → 造 prompt → `chat_llm()` → `parse_joint()`,自动传
   `x_keys`/`y_keys`)→
   `parse_joint(llm_response, key1, key2, x_keys, y_keys)`(剥 markdown fence → rle 取最长含逗号
-  行块 → 表头探测/补齐 → `utils::read.csv` → 防伪造过滤)→
+  行块 → 表头探测/补齐 → `utils::read.csv` → 防伪造过滤 → 未匹配键提示
+  `.warn_unmatched()`,x/y 双侧各一条 warning,真实 NA 不计,只提示不删行)→
   `llm_join()`(build_joint + 两次显式 `merge()`;x 已含名为 `key2` 的列时靠 merge 后缀
   探测定位 joint 键列)。
 - **工具** `R/utils.R`:`%||%`、`globalVariables`、NAMESPACE imports(httr/jsonlite)。
@@ -112,12 +119,15 @@ llmjoin:用 LLM 做数据框模糊连接(拼写变体、跨语言、精度差异
 2026-10-04 审核的 1-4 项(llm_join 合并键、parse_joint 表头探测、tbl2md factor、
 claude 多 text block)与遗留的 4 项低优先级问题(README writeClipboard、"NA" 键回显、
 chat_llm 消息校验、键名入口校验)均已修复(后者见
-handoff/[DONE]-修复遗留问题5至8-261005.md)。剩余待办:
+handoff/[DONE]-修复遗留问题5至8-261005.md)。261006 完成 DeepSeek provider、默认模型
+调整(openai gpt-6-luna / gemini gemini-3.8-flash / deepseek deepseek-flash)、openai
+reasoning 请求体修复与 E1/E2 增强(见
+handoff/[DONE]-默认模型与DeepSeek及E1E2-261006.md)。剩余待办:
 
-1. 【需实测】OpenAI gpt-5.4-mini 的 `max_tokens`/`temperature` 请求体可能被官方 API 拒绝
-   (GPT-5/o 系要求 `max_completion_tokens`、拒 temperature),需真实 API 验证。
-2. 【可选增强】`provider_parse()` 检查 `finish_reason=="length"` 截断并警告;
-   `parse_joint()` 末尾对未匹配的 x_keys 提示"N 个键未匹配"。
+1. 【需实测】默认模型(openai gpt-6-luna / gemini gemini-3.8-flash / deepseek
+   deepseek-flash)与 openai reasoning 请求体修复(`max_completion_tokens`、省略
+   temperature)未经真实 API 验证,测试全 mock;建议配置真实 key 后各 provider
+   冒烟一次。
 
 ## 常用命令
 

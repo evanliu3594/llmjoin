@@ -22,9 +22,13 @@ raises an error.}
 
 \item{.model}{character, LLM model to use. By default NULL (uses config value).}
 
-\item{.temperature}{OpenAI style randomness control (0~1), by default 0.}
+\item{.temperature}{OpenAI style randomness control (0~1), by default 0.
+For OpenAI gpt-5+/o-series models the parameter is not sent (the
+official API rejects it); a non-zero value triggers a warning.}
 
-\item{.max_tokens}{Max tokens to spend.}
+\item{.max_tokens}{Max tokens to spend. Sent as
+\code{max_completion_tokens} for OpenAI gpt-5+/o-series models, as
+\code{max_tokens} for every other model and provider.}
 
 \item{.timeout}{Max seconds to communicate with LLM.}
 

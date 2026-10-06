@@ -33,6 +33,11 @@ Strips markdown fences, extracts the longest consecutive block of
 comma-separated lines, ensures a header row matching `key1,key2`
 is present, and parses the CSV into a 2-column data.frame.
 }
+\details{
+When `x_keys`/`y_keys` are provided, original keys that never appear in
+the parsed result raise an informational warning naming the column, the
+count and up to 5 sample values; rows are never dropped by this feedback.
+}
 \examples{
 parse_joint("01,January\n02,Feb\n04,May", key1 = "id", key2 = "month")
 }

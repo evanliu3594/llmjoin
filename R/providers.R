@@ -4,7 +4,7 @@
     name = "openai",
     base_url = "https://api.openai.com/v1",
     endpoint = "/chat/completions",
-    default_model = "gpt-5.4-mini",
+    default_model = "gpt-6-luna",
     auth_type = "bearer"
   ),
   claude = list(
@@ -18,7 +18,14 @@
     name = "gemini",
     base_url = "https://generativelanguage.googleapis.com/v1beta/openai",
     endpoint = "/chat/completions",
-    default_model = "gemini-3-flash",
+    default_model = "gemini-3.8-flash",
+    auth_type = "bearer"
+  ),
+  deepseek = list(
+    name = "deepseek",
+    base_url = "https://api.deepseek.com/v1",
+    endpoint = "/chat/completions",
+    default_model = "deepseek-flash",
     auth_type = "bearer"
   )
 )
@@ -47,7 +54,36 @@ provider_headers <- function(provider, key) {
 #' @noRd
 provider_body <- function(provider, model, message, temperature, max_tokens) {
   switch(provider,
-    openai = , gemini = {
+    openai = {
+      # GPT-5+/o-series models (gpt-6-luna, gpt-5.4-mini, o4-mini, ...) reject
+      # max_tokens and temperature on the official OpenAI API: send
+      # max_completion_tokens instead and omit temperature entirely.
+      if (grepl("^(o[0-9]|gpt-[5-9])", model)) {
+        if (temperature != 0) {
+          warning(
+            "Model '", model, "': temperature was not sent. ",
+            "The official OpenAI API rejects 'temperature' for gpt-5+/o-series ",
+            "models. Remove the .temperature argument to silence this warning."
+          )
+        }
+        list(
+          model = model,
+          messages = list(list(role = "user", content = message)),
+          max_completion_tokens = max_tokens
+        )
+      } else {
+        # Classic parameters for every other openai model: third-party
+        # OpenAI-compatible endpoints (Ollama, proxies, ...) are routed
+        # through provider="openai" and rely on the classic parameter names.
+        list(
+          model = model,
+          messages = list(list(role = "user", content = message)),
+          max_tokens = max_tokens,
+          temperature = temperature
+        )
+      }
+    },
+    gemini = , deepseek = {
       list(
         model = model,
         messages = list(list(role = "user", content = message)),
@@ -71,7 +107,7 @@ provider_body <- function(provider, model, message, temperature, max_tokens) {
 #' @noRd
 provider_parse <- function(provider, parsed_json) {
   switch(provider,
-    openai = , gemini = {
+    openai = , gemini = , deepseek = {
       if (is.null(parsed_json$choices) || length(parsed_json$choices) == 0) {
         stop("Invalid response structure: no choices found")
       }
@@ -81,6 +117,12 @@ provider_parse <- function(provider, parsed_json) {
           "Invalid response structure: empty message content. ",
           "Reasoning models may consume all max_tokens on reasoning. ",
           "Try increasing .max_tokens (e.g., 16000)."
+        )
+      }
+      if (identical(parsed_json$choices[[1]]$finish_reason, "length")) {
+        warning(
+          "LLM response may be truncated (finish_reason 'length'); ",
+          "the output may be incomplete. Increase .max_tokens and retry."
         )
       }
       as.character(msg)
@@ -96,10 +138,17 @@ provider_parse <- function(provider, parsed_json) {
       if (length(text_blocks) == 0) {
         stop("Invalid response structure: no text block found")
       }
-      paste(
+      text <- paste(
         vapply(text_blocks, \(b) as.character(b$text), character(1)),
         collapse = ""
       )
+      if (identical(parsed_json$stop_reason, "max_tokens")) {
+        warning(
+          "LLM response may be truncated (stop_reason 'max_tokens'); ",
+          "the output may be incomplete. Increase .max_tokens and retry."
+        )
+      }
+      text
     },
     stop("Unknown provider: ", provider)
   )

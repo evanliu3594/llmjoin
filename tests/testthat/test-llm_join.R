@@ -76,8 +76,14 @@ describe("llm_join", {
       .package = "llmjoin"
     )
     # When:  llm_join(x, y, key1 = "id", key2 = "month")
-    result <- llm_join(x, y, key1 = "id", key2 = "month")
     # Then:  2 rows; the NA-key row survives; its y-side cells are NA
+    #   (y's "Feb" is never mapped and raises the E2 unmatched-key warning
+    #   for the y side)
+    expect_warning(
+      result <- llm_join(x, y, key1 = "id", key2 = "month"),
+      "1 of 2 key value(s) in 'month' were not matched",
+      fixed = TRUE
+    )
     expect_equal(nrow(result), 2)
     expect_equal(sum(is.na(result$id)), 1)
     na_row <- is.na(result$id)

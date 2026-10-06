@@ -285,11 +285,18 @@ describe("parse_joint", {
     it("should filter out LLM-fabricated key1 values not in x_keys", {
       mock_response <- "01,January\n99,Feb\n04,May"
 
-      expect_warning(
-        result <- parse_joint(mock_response, key1 = "id", key2 = "month",
-                              x_keys = c("01", "02", "04")),
-        "fabricated"
+      # warning 1: the fabricated "99" row; warning 2: E2 feedback for the
+      # never-mapped "02" (asserted in the E2 describe block)
+      msgs <- character(0)
+      result <- withCallingHandlers(
+        parse_joint(mock_response, key1 = "id", key2 = "month",
+                    x_keys = c("01", "02", "04")),
+        warning = function(w) {
+          msgs <<- c(msgs, conditionMessage(w))
+          invokeRestart("muffleWarning")
+        }
       )
+      expect_match(msgs[1], "fabricated", fixed = TRUE)
 
       expect_equal(nrow(result), 2)
       expect_equal(result[["id"]], c("01", "04"))
@@ -299,11 +306,18 @@ describe("parse_joint", {
     it("should filter out LLM-fabricated key2 values not in y_keys", {
       mock_response <- "01,January\n02,FakeCity\n04,May"
 
-      expect_warning(
-        result <- parse_joint(mock_response, key1 = "id", key2 = "month",
-                              y_keys = c("January", "Feb", "May")),
-        "fabricated"
+      # warning 1: the fabricated "FakeCity" row; warning 2: E2 feedback for
+      # the never-mapped "Feb" (asserted in the E2 describe block)
+      msgs <- character(0)
+      result <- withCallingHandlers(
+        parse_joint(mock_response, key1 = "id", key2 = "month",
+                    y_keys = c("January", "Feb", "May")),
+        warning = function(w) {
+          msgs <<- c(msgs, conditionMessage(w))
+          invokeRestart("muffleWarning")
+        }
       )
+      expect_match(msgs[1], "fabricated", fixed = TRUE)
 
       expect_equal(nrow(result), 2)
       expect_equal(result[["id"]], c("01", "04"))
@@ -312,8 +326,14 @@ describe("parse_joint", {
     it("should NOT treat empty key2 (NA) as fabrication", {
       mock_response <- "01,January\n02,\n04,May"
 
-      result <- parse_joint(mock_response, key1 = "id", key2 = "month",
-                            y_keys = c("January", "Feb", "May"))
+      # the never-mapped "Feb" raises the single E2 unmatched-key warning
+      # (its content is asserted in the E2 describe block)
+      expect_warning(
+        result <- parse_joint(mock_response, key1 = "id", key2 = "month",
+                              y_keys = c("January", "Feb", "May")),
+        "not matched",
+        fixed = TRUE
+      )
 
       expect_equal(nrow(result), 3)
       expect_true(is.na(result[["month"]][result[["id"]] == "02"]))
@@ -353,12 +373,19 @@ describe("parse_joint", {
     it("should return 0-row data.frame when all values are fabricated", {
       mock_response <- "99,Foo\n88,Bar"
 
-      expect_warning(
-        result <- parse_joint(mock_response, key1 = "id", key2 = "month",
-                              x_keys = c("01", "02"),
-                              y_keys = c("January", "Feb")),
-        "fabricated"
+      # warning 1: both x values fabricated; warnings 2-3: E2 feedback for
+      # the fully unmatched x and y key sets (covered in the E2 block)
+      msgs <- character(0)
+      result <- withCallingHandlers(
+        parse_joint(mock_response, key1 = "id", key2 = "month",
+                    x_keys = c("01", "02"),
+                    y_keys = c("January", "Feb")),
+        warning = function(w) {
+          msgs <<- c(msgs, conditionMessage(w))
+          invokeRestart("muffleWarning")
+        }
       )
+      expect_match(msgs[1], "fabricated", fixed = TRUE)
 
       expect_equal(nrow(result), 0)
       expect_s3_class(result, "data.frame")
@@ -368,10 +395,14 @@ describe("parse_joint", {
     it("should compare key values after coercing to character", {
       mock_response <- "1.5,Jan\n3,Mar"
 
-      # numeric x_keys — should still match their character representation
-      result <- parse_joint(mock_response, key1 = "weight", key2 = "month",
-                            x_keys = c(1.5, 3, 5),
-                            y_keys = c("Jan", "Feb", "Mar"))
+      # numeric x_keys — should still match their character representation;
+      # the never-mapped "5" (x) and "Feb" (y) raise the E2 unmatched-key
+      # warnings (covered in the E2 describe block)
+      result <- suppressWarnings(
+        parse_joint(mock_response, key1 = "weight", key2 = "month",
+                    x_keys = c(1.5, 3, 5),
+                    y_keys = c("Jan", "Feb", "Mar"))
+      )
 
       expect_equal(nrow(result), 2)
       expect_equal(result[["weight"]], c("1.5", "3"))
@@ -430,13 +461,21 @@ describe("parse_joint", {
     it("should still flag 'NA' as fabrication when the key set has no actual NA and no literal 'NA'", {
       # Given: x key column has neither actual NA nor a literal "NA" value
       # When:  parse_joint("01,January\nNA,Feb", ..., x_keys = c("01", "02"))
-      # Then:  fabrication warning fires; the "NA" row is dropped (1 row left)
-      #   — the whitelist must not be weakened unconditionally (root P0.3)
-      expect_warning(
-        result <- parse_joint("01,January\nNA,Feb", key1 = "id", key2 = "month",
-                              x_keys = c("01", "02")),
-        "fabricated"
+      # Then:  the fabrication warning fires first and the "NA" row is
+      #   dropped (1 row left) — the whitelist must not be weakened
+      #   unconditionally (root P0.3); the never-mapped "02" additionally
+      #   raises the E2 unmatched-key warning (covered in the E2 block)
+      msgs <- character(0)
+      result <- withCallingHandlers(
+        parse_joint("01,January\nNA,Feb", key1 = "id", key2 = "month",
+                    x_keys = c("01", "02")),
+        warning = function(w) {
+          msgs <<- c(msgs, conditionMessage(w))
+          invokeRestart("muffleWarning")
+        }
       )
+      expect_match(msgs[1], "fabricated", fixed = TRUE)
+
       expect_equal(nrow(result), 1)
       expect_equal(result[["id"]], "01")
       expect_equal(result[["month"]], "January")
@@ -469,6 +508,154 @@ describe("parse_joint", {
       expect_equal(result[["id"]], c("01", "NA"))
     })
 
+  })
+
+})
+
+# TDD/BDD: parse_joint() — unmatched-key feedback (E2, 261006: maintainer
+#   approved separate warnings for the x and the y side)
+# Contract: after the fabrication whitelist filtering, keys present in
+#   x_keys (or y_keys) but absent from the parsed key1 (key2) column raise
+#   one warning per side naming the column, the count ("N of M ... not
+#   matched") and up to 5 sample values; data rows are never deleted by
+#   this feedback — it is informational only.
+# Contract: actual NA keys are not expected to be matched (the prompt tells
+#   the LLM to leave unmappable cells empty) and never count as unmatched.
+# Contract: with no key sets provided (manual workflow) no new warnings
+#   appear; the existing fabrication warnings keep firing unchanged.
+
+describe("unmatched-key feedback (E2)", {
+
+  it("warns with a count when some x keys are not matched", {
+    # Given: response "01,January\n04,May" (02 was never mapped)
+    # When:  parse_joint(..., key1 = "id", key2 = "month",
+    #          x_keys = c("01", "02", "04"))
+    # Then:  one warning containing "1 of 3", the column name 'id' and
+    #   "not matched"; the result is unchanged — 2 rows, no rows deleted by
+    #   this feedback
+    expect_warning(
+      result <- parse_joint("01,January\n04,May", key1 = "id", key2 = "month",
+                            x_keys = c("01", "02", "04")),
+      "1 of 3 key value(s) in 'id' were not matched",
+      fixed = TRUE
+    )
+    expect_equal(nrow(result), 2)
+    expect_equal(result[["id"]], c("01", "04"))
+    expect_equal(result[["month"]], c("January", "May"))
+  })
+
+  it("warns for unmatched y keys", {
+    # Given: response "01,January\n02,Feb" with y_keys c("January", "Feb", "May")
+    # When:  parse_joint(..., key1 = "id", key2 = "month", y_keys = ...)
+    # Then:  one warning containing "1 of 3" and the column name 'month'
+    expect_warning(
+      result <- parse_joint("01,January\n02,Feb", key1 = "id", key2 = "month",
+                            y_keys = c("January", "Feb", "May")),
+      "1 of 3 key value(s) in 'month' were not matched",
+      fixed = TRUE
+    )
+    expect_equal(nrow(result), 2)
+  })
+
+  it("emits separate warnings for the x and the y side", {
+    # Given: response "01,January" with x_keys c("01", "02") and
+    #   y_keys c("January", "Feb")
+    # When:  parse_joint(...) with both key sets
+    # Then:  exactly two warnings — one naming 'id', one naming 'month'
+    msgs <- character(0)
+    result <- withCallingHandlers(
+      parse_joint("01,January", key1 = "id", key2 = "month",
+                  x_keys = c("01", "02"), y_keys = c("January", "Feb")),
+      warning = function(w) {
+        msgs <<- c(msgs, conditionMessage(w))
+        invokeRestart("muffleWarning")
+      }
+    )
+    expect_length(msgs, 2)
+    expect_match(msgs[1], "in 'id' were not matched", fixed = TRUE)
+    expect_match(msgs[2], "in 'month' were not matched", fixed = TRUE)
+    expect_equal(nrow(result), 1)
+  })
+
+  it("stays silent when every key is matched (regression)", {
+    # Given: a full mapping response with x_keys and y_keys provided
+    # When:  parse_joint(...) with both key sets
+    # Then:  expect_no_warning
+    expect_no_warning(
+      result <- parse_joint("01,January\n02,Feb\n04,May",
+                            key1 = "id", key2 = "month",
+                            x_keys = c("01", "02", "04"),
+                            y_keys = c("January", "Feb", "May"))
+    )
+    expect_equal(nrow(result), 3)
+  })
+
+  it("stays silent when x_keys/y_keys are not provided (regression)", {
+    # Given: the manual workflow — no key sets, any parseable response
+    # When:  parse_joint(...)
+    # Then:  expect_no_warning
+    expect_no_warning(
+      result <- parse_joint("column1,column2\ncode01,January\ncode02,Feb",
+                            key1 = "id", key2 = "month")
+    )
+    expect_equal(nrow(result), 2)
+  })
+
+  it("does not count actual NA keys as unmatched", {
+    # Given: x_keys = c("01", NA); response "01,January" — the NA key is not
+    #   expected to be mapped (the LLM is told to leave cells empty)
+    # When:  parse_joint(..., key1 = "id", key2 = "month", x_keys = c("01", NA))
+    # Then:  expect_no_warning; result keeps 1 row
+    expect_no_warning(
+      result <- parse_joint("01,January", key1 = "id", key2 = "month",
+                            x_keys = c("01", NA))
+    )
+    expect_equal(nrow(result), 1)
+  })
+
+  it("lists up to 5 sample values and an ellipsis beyond that", {
+    # Given: 7 x keys, none of them mapped by the response
+    # When:  parse_joint(...) with x_keys = the 7 values
+    # Then:  the warning contains "7 of 7" and "... and 2 more"
+    keys <- c("k1", "k2", "k3", "k4", "k5", "k6", "k7")
+    msgs <- character(0)
+    result <- withCallingHandlers(
+      parse_joint("zz,foo", key1 = "id", key2 = "month",
+                  x_keys = keys, y_keys = "foo"),
+      warning = function(w) {
+        msgs <<- c(msgs, conditionMessage(w))
+        invokeRestart("muffleWarning")
+      }
+    )
+    expect_true(any(grepl("7 of 7 key value(s) in 'id' were not matched",
+                          msgs, fixed = TRUE)))
+    expect_true(any(grepl("... and 2 more", msgs, fixed = TRUE)))
+    expect_equal(nrow(result), 0)
+  })
+
+  it("counts unmatched keys only after fabrication filtering", {
+    # Given: response "99,Feb" with x_keys c("01", "02") and
+    #   y_keys c("January", "Feb")
+    # When:  parse_joint(...) with both key sets
+    # Then:  warnings include the fabricated drop for x ("99") plus the
+    #   unmatched feedback for both sides; the fabricated value 99 never
+    #   appears in an unmatched message; result keeps 0 rows
+    msgs <- character(0)
+    result <- withCallingHandlers(
+      parse_joint("99,Feb", key1 = "id", key2 = "month",
+                  x_keys = c("01", "02"), y_keys = c("January", "Feb")),
+      warning = function(w) {
+        msgs <<- c(msgs, conditionMessage(w))
+        invokeRestart("muffleWarning")
+      }
+    )
+    expect_length(msgs, 3)
+    expect_match(msgs[1], "fabricated", fixed = TRUE)
+    expect_match(msgs[2], "2 of 2 key value(s) in 'id' were not matched", fixed = TRUE)
+    expect_match(msgs[3], "2 of 2 key value(s) in 'month' were not matched", fixed = TRUE)
+    expect_false(grepl("99", msgs[2], fixed = TRUE))
+    expect_false(grepl("99", msgs[3], fixed = TRUE))
+    expect_equal(nrow(result), 0)
   })
 
 })

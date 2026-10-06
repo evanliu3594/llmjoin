@@ -11,12 +11,12 @@
 - 函数命名 snake_case;内部辅助函数 `.` 前缀或 `@noRd`;roxygen 变更后跑 `devtools::document()`(根 P2.1)。
 - 新增 provider = `.providers` 注册表加一项 + 四个内部函数各加一个 case(根 §架构 Provider 层)。
 
-## 当前清单(261005)
+## 当前清单(261006)
 
 | 文件 | 内容(一句话) | 状态 |
 |---|---|---|
 | `connection.R` | `set_llm()` 配置读写 + `chat_llm()` 唯一 LLM 调用入口(`.message` 强转/拼接) | 现行 |
-| `providers.R` | provider 注册表(openai/claude/gemini)+ headers/body/parse/url 四函数 | 现行 |
+| `providers.R` | provider 注册表(openai/claude/gemini/deepseek)+ headers/body/parse/url 四函数 | 现行 |
 | `llmjoin.R` | join 管线:tbl2md → joint_prompt → build_joint → parse_joint → llm_join | 现行 |
 | `utils.R` | `%||%`、globalVariables、NAMESPACE imports | 现行 |
 
@@ -30,3 +30,13 @@
   字符串且存在于对应列名;校验先于 LLM 调用,错误信息点名参数并附修复指引。
 - `llm_join()` 第二段 merge 前须探测 joint 键列是否被 merge 加 `.x/.y` 后缀(x 已含名为
   `key2` 的列时会出现),按实际列名连接——移除该探测会复活"静默一行都匹配不上"的旧 bug。
+- `provider_body()` openai 分支:模型名匹配 `^(o[0-9]|gpt-[5-9])`(GPT-5+/o 系)发
+  `max_completion_tokens`、省略 temperature(`.temperature` 非 0 时警告被忽略);其余
+  模型维持 `max_tokens`+temperature——第三方兼容端点(Ollama、代理等)经
+  provider="openai" 接入,不得整体切换。
+- `provider_parse()` 对截断回复警告(E1):openai/gemini/deepseek 看
+  `finish_reason=="length"`,claude 看 `stop_reason=="max_tokens"`;reasoning 模型
+  空内容报错优先于截断警告。
+- `parse_joint()` 末尾 `.warn_unmatched()` 提示未匹配键(E2):x/y 双侧各一条 warning,
+  真实 NA 键不计入,只提示不删行;计算必须放在两个白名单过滤块之后(y 侧删行会
+  改变 x 侧计数)。

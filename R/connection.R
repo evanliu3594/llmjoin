@@ -1,10 +1,10 @@
 #' Set up your LLM service
-#' @description Set up your LLM service with native support for OpenAI, Claude (Anthropic), and Gemini (via OpenAI-compatible endpoint).
-#'   For custom endpoints like Ollama, proxies, DeepSeek, Kimi, and others, use provider = "openai" along with your custom URL to connect through the compactible API interface.
+#' @description Set up your LLM service with native support for OpenAI, Claude (Anthropic), Gemini (via OpenAI-compatible endpoint), and DeepSeek.
+#'   For custom endpoints like Ollama, proxies, Kimi, and others, use provider = "openai" along with your custom URL to connect through the compatible API interface.
 #'   All information is stored strictly locally in your system configuration and is never uploaded or shared.
 #'
 #' @param provider character, LLM provider. One of "openai",
-#'   "claude", "gemini". Default "openai".
+#'   "claude", "gemini", "deepseek". Default "openai".
 #' @param url url to your LLM provider endpoint. If NULL, auto-set based on provider.
 #' @param key api-key of your service.
 #' @param model character, model name. If NULL, auto-set from provider default.
@@ -12,7 +12,7 @@
 #' @returns NULL invisibly. Called for side effect of writing the config file.
 #' @examples
 #' \donttest{
-#'   set_llm(provider = "openai", key = "<your-openai-api-key>", model = "gpt-5.4-mini")
+#'   set_llm(provider = "openai", key = "<your-openai-api-key>", model = "gpt-6-luna")
 #' }
 #' @export
 #'
@@ -79,7 +79,11 @@ set_llm <- function(provider = "openai", url = NULL, key = NULL, model = NULL) {
 #'   raises an error.
 #' @param .model character, LLM model to use. By default NULL (uses config value).
 #' @param .temperature OpenAI style randomness control (0~1), by default 0.
-#' @param .max_tokens Max tokens to spend.
+#'   For OpenAI gpt-5+/o-series models the parameter is not sent (the
+#'   official API rejects it); a non-zero value triggers a warning.
+#' @param .max_tokens Max tokens to spend. Sent as
+#'   \code{max_completion_tokens} for OpenAI gpt-5+/o-series models, as
+#'   \code{max_tokens} for every other model and provider.
 #' @param .timeout Max seconds to communicate with LLM.
 #' @param .verbose logical, print progress messages. Default \code{getOption("llmjoin.verbose", FALSE)}.
 #'

@@ -8,7 +8,7 @@ set_llm(provider = "openai", url = NULL, key = NULL, model = NULL)
 }
 \arguments{
 \item{provider}{character, LLM provider. One of "openai",
-"claude", "gemini". Default "openai".}
+"claude", "gemini", "deepseek". Default "openai".}
 
 \item{url}{url to your LLM provider endpoint. If NULL, auto-set based on provider.}
 
@@ -20,12 +20,12 @@ set_llm(provider = "openai", url = NULL, key = NULL, model = NULL)
 NULL invisibly. Called for side effect of writing the config file.
 }
 \description{
-Set up your LLM service with native support for OpenAI, Claude (Anthropic), and Gemini (via OpenAI-compatible endpoint).
-  For custom endpoints like Ollama, proxies, DeepSeek, Kimi, and others, use provider = "openai" along with your custom URL to connect through the compactible API interface.
+Set up your LLM service with native support for OpenAI, Claude (Anthropic), Gemini (via OpenAI-compatible endpoint), and DeepSeek.
+  For custom endpoints like Ollama, proxies, Kimi, and others, use provider = "openai" along with your custom URL to connect through the compatible API interface.
   All information is stored strictly locally in your system configuration and is never uploaded or shared.
 }
 \examples{
 \donttest{
-  set_llm(provider = "openai", key = "<your-openai-api-key>", model = "gpt-5.4-mini")
+  set_llm(provider = "openai", key = "<your-openai-api-key>", model = "gpt-6-luna")
 }
 }

@@ -76,6 +76,10 @@ joint_prompt <- function(x, y) {
 #' comma-separated lines, ensures a header row matching `key1,key2`
 #' is present, and parses the CSV into a 2-column data.frame.
 #'
+#' When `x_keys`/`y_keys` are provided, original keys that never appear in
+#' the parsed result raise an informational warning naming the column, the
+#' count and up to 5 sample values; rows are never dropped by this feedback.
+#'
 #' @param llm_response character, raw response from the LLM.
 #' @param key1 string, name of the lhs key column.
 #' @param key2 string, name of the rhs key column.
@@ -197,7 +201,40 @@ parse_joint <- function(llm_response, key1, key2, x_keys = NULL, y_keys = NULL) 
     }
   }
 
+  # E2: report original keys the LLM never mapped. Computed here — after
+  # both whitelist filters — because the y-side row drops change the x-side
+  # outcome, so both counts must see the final result. Actual NA keys are
+  # excluded: the prompt tells the LLM to leave unmappable cells empty, so
+  # an unmapped NA is documented behaviour. Informational only — no rows
+  # are removed.
+  if (!is.null(x_keys)) .warn_unmatched(x_keys, result[[key1]], key1)
+  if (!is.null(y_keys)) .warn_unmatched(y_keys, result[[key2]], key2)
+
   result
+}
+
+#' Warn about original key values the LLM never mapped
+#'
+#' Internal helper for parse_joint(): compares the expected non-NA key values
+#' against the parsed key column after the fabrication filters and warns with
+#' the count and up to 5 sample values. Informational only — never drops rows.
+#' @noRd
+.warn_unmatched <- function(expected_keys, parsed_values, key) {
+  expected <- expected_keys[!is.na(expected_keys)]
+  unmatched <- setdiff(expected, parsed_values)
+  if (length(unmatched) == 0) {
+    return(invisible(NULL))
+  }
+  shown <- utils::head(unmatched, 5)
+  msg <- sprintf(
+    "%d of %d key value(s) in '%s' were not matched by the LLM: %s. Rows with these keys will have no match after joining.",
+    length(unmatched), length(expected), key,
+    paste(sQuote(shown), collapse = ", ")
+  )
+  if (length(unmatched) > 5) {
+    msg <- paste0(msg, sprintf(" ... and %d more", length(unmatched) - 5))
+  }
+  warning(msg)
 }
 
 #' Validate a key argument against a data.frame's column names

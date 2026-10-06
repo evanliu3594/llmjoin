@@ -1,10 +1,15 @@
 # llmjoin 0.3.1
 
 ## changes
+- Added DeepSeek as a first-class provider: `set_llm(provider = "deepseek")` defaults to `https://api.deepseek.com/v1/chat/completions` with Bearer authentication and the `deepseek-flash` model.
+- Default models updated: OpenAI now defaults to `gpt-6-luna` and Gemini to `gemini-3.8-flash`.
+- `provider_parse()` now warns when the LLM reply is truncated — OpenAI/Gemini/DeepSeek `finish_reason == "length"`, Claude `stop_reason == "max_tokens"` — and still returns the parsed text. Increase `.max_tokens` and retry.
+- `parse_joint()` now reports keys the LLM never mapped: with `x_keys`/`y_keys` provided, keys absent from the parsed result raise one informational warning per side naming the column, the count and up to 5 sample values. Rows are never dropped by this feedback; actual `NA` keys never count as unmatched (the prompt tells the LLM to leave unmappable cells empty).
 - Removed `readr` dependency. Replaced `readr::read_csv()` with base R `utils::read.csv()` in `parse_joint()`, reducing transitive dependencies from ~30 to ~7.
 - Added LLM fabrication defense in `parse_joint()`. New optional parameters `x_keys` and `y_keys` validate parsed values against original key columns — fabricated values are dropped with a warning. `build_joint()` and `llm_join()` enable this automatically.
 
 ## Fixes
+- OpenAI gpt-5+/o-series models (`gpt-6-luna`, `gpt-5.4-mini`, `o4-mini`, ...) now receive `max_completion_tokens` instead of `max_tokens`, and `temperature` is omitted — the official API rejects both parameters for these models. A non-zero `.temperature` on such models warns that it is ignored. All other models, and third-party OpenAI-compatible endpoints routed through `provider = "openai"`, keep the classic `max_tokens` + `temperature` body.
 - `llm_join()` now merges on the explicit keys: `key1` first, then `key2`. Previously both merges relied on the intersection of same-named columns, so same-named non-key columns in `x` and `y` silently mis-joined or dropped `y` data, and a column named `key2` in `x` silently matched nothing. The README manual workflow now shows the equivalent explicit-`by` merges.
 - `parse_joint()` header detection now recognizes quoted (`"id","month"`) and generic (`value1,value2`, `column1,column2`, ...) header rows and strips them instead of leaking them into the parsed data.
 - `tbl2md()` no longer silently renders an empty table for factor vectors.
