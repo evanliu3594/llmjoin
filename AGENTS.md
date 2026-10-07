@@ -35,6 +35,7 @@ llmjoin:用 LLM 做数据框模糊连接(拼写变体、跨语言、精度差异
 | ③ | 开发辅助工具 | 提交信息、用户可见文档、交接记录**不点名开发辅助工具**;provider 功能语境除外(接入新 LLM 服务时如实描述) | 261004 |
 | ④ | 版本管理 | AGENTS 体系(根 + `R/`、`tests/`)与 `handoff/` **纳入 git 追踪**;`.Rbuildignore` 维持排除,不进 R CMD 构建(261005 维护者拍板;历史记录的措辞中性化以维护者 261004 就地修订为先例) | 261005 |
 | ⑤ | 历史重写 | 261005 已对全历史执行痕迹清除重写并 force-push:b9b1c4b 起的提交 SHA 均已改变(映射见 handoff/261005_全量清除开发助手痕迹.md),旧记录中的 SHA 引用以该映射为准;归档于仓库外 bundle 与本地 `backup/` 分支,永不推送 | 261005 |
+| ⑥ | claude 字样范围 | provider 注册表与用户文档保留 claude 配置入口(provider 功能语境,口径③除外条款适用);261005 清除的仅为协作者身份痕迹,「provider 语境 claude 除名」问题就此关闭 | 261007 |
 
 ## P0 硬约束
 
@@ -124,15 +125,13 @@ handoff/261005_修复遗留问题5至8.md)。261006 完成 DeepSeek provider、�
 reasoning 请求体修复与 E1/E2 增强(见
 handoff/261006_默认模型与DeepSeek及E1E2.md)。剩余待办:
 
-1. 【需实测】默认模型(openai gpt-6-luna / gemini gemini-3.8-flash / deepseek
+1. 【搁置(261007 拍板)】默认模型(openai gpt-6-luna / gemini gemini-3.8-flash / deepseek
    deepseek-flash)与 openai reasoning 请求体修复(`max_completion_tokens`、省略
-   temperature)未经真实 API 验证,测试全 mock;建议配置真实 key 后各 provider
-   冒烟一次。
+   temperature)未经真实 API 验证,测试全 mock;维护者暂无真实 key,冒烟搁置,
+   待真实使用出现 issue 再验证。
 2. 【待拍板】GitHub 服务端缓存:force-push 后旧提交对象按 SHA 直链短期可访问,直至
    其服务端 GC;如需立即彻底清除可联系 GitHub Support(261005 全量清除记录遗留,
    261007 登记总纲)。
-3. 【待拍板】provider 语境 claude 字样是否除名:涉及 `R/providers.R` 注册表与用户
-   文档,属功能性变更,若除名需另行拍板(261005 全量清除记录遗留,261007 登记总纲)。
 
 ## 常用命令
 
