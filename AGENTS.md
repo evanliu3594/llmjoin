@@ -129,9 +129,10 @@ handoff/261006_默认模型与DeepSeek及E1E2.md)。剩余待办:
    deepseek-flash)与 openai reasoning 请求体修复(`max_completion_tokens`、省略
    temperature)未经真实 API 验证,测试全 mock;维护者暂无真实 key,冒烟搁置,
    待真实使用出现 issue 再验证。
-2. 【待拍板】GitHub 服务端缓存:force-push 后旧提交对象按 SHA 直链短期可访问,直至
-   其服务端 GC;如需立即彻底清除可联系 GitHub Support(261005 全量清除记录遗留,
-   261007 登记总纲)。
+2. 【进行中(261007 拍板)】GitHub 服务端缓存:261007 实测 6 个旧提交 SHA 中 5 个
+   已不可达,仅首变更提交 b9b1c4b 仍按 SHA 直链可访问(未 GC);已拍板开 GitHub
+   Support 工单,草稿见 handoff/261007_GitHub缓存支持请求.md,待维护者提交;若
+   Support 以非敏感数据为由拒绝,回退为等待服务端 GC。
 
 ## 常用命令
 
