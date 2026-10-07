@@ -131,8 +131,10 @@ handoff/261006_默认模型与DeepSeek及E1E2.md)。剩余待办:
    待真实使用出现 issue 再验证。
 2. 【进行中(261007 拍板)】GitHub 服务端缓存:261007 实测 6 个旧提交 SHA 中 5 个
    已不可达,仅首变更提交 b9b1c4b 仍按 SHA 直链可访问(未 GC);已拍板开 GitHub
-   Support 工单,草稿见 handoff/261007_GitHub缓存支持请求.md,待维护者提交;若
-   Support 以非敏感数据为由拒绝,回退为等待服务端 GC。
+   Support 工单,草稿见 handoff/261007_GitHub缓存支持请求.md,待维护者提交。入口
+   核实(261007):support.github.com 经 302 落在 help.github.com,登录后才渲染
+   表单;免费账号可能无「open a support ticket」入口(仅可按主题提交账号/安全/
+   滥用类请求);若入口不可用或 Support 以非敏感数据为由拒绝,回退为等待服务端 GC。
 
 ## 常用命令
 
