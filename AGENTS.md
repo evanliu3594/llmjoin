@@ -129,12 +129,11 @@ handoff/261006_默认模型与DeepSeek及E1E2.md)。剩余待办:
    deepseek-flash)与 openai reasoning 请求体修复(`max_completion_tokens`、省略
    temperature)未经真实 API 验证,测试全 mock;维护者暂无真实 key,冒烟搁置,
    待真实使用出现 issue 再验证。
-2. 【进行中(261007 拍板)】GitHub 服务端缓存:261007 实测 6 个旧提交 SHA 中 5 个
-   已不可达,仅首变更提交 b9b1c4b 仍按 SHA 直链可访问(未 GC);已拍板开 GitHub
-   Support 工单,草稿见 handoff/261007_GitHub缓存支持请求.md,待维护者提交。入口
-   核实(261007):support.github.com 经 302 落在 help.github.com,登录后才渲染
-   表单;免费账号可能无「open a support ticket」入口(仅可按主题提交账号/安全/
-   滥用类请求);若入口不可用或 Support 以非敏感数据为由拒绝,回退为等待服务端 GC。
+2. 【已提交待响应(261007,工单 #4830894)】GitHub 服务端缓存:261007 实测 6 个旧
+   提交 SHA 中 5 个已不可达,仅首变更提交 b9b1c4b 仍按 SHA 直链可访问(未 GC);
+   工单经支持门户 AI 预检转人工提交(路径见 handoff/261007_支持工单提交.md),草稿
+   见 handoff/261007_GitHub缓存支持请求.md 附录;Support 回复后:执行则复测 6 个
+   SHA 并关闭本项,以非敏感数据为由拒绝则回退为等待服务端 GC。
 
 ## 常用命令
 
