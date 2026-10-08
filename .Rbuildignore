@@ -1,13 +1,12 @@
 ^.*\.Rproj$
-^\.Rproj\.user$
 ^LICENSE\.md$
 ^AGENTS\.md$
 ^R/AGENTS\.md$
 ^tests/AGENTS\.md$
 ^handoff$
-^test_output\.txt$
 ^CRAN-SUBMISSION$
 ^cran-comments\.md$
-^\.Rhistory$
-^\.gitignore$
 ^\.zcodeignore$
+^\.wrangler$
+^\.positron$
+^\.vscode$
