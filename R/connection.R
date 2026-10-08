@@ -112,6 +112,58 @@ set_llm <- function(provider = "openai", url = NULL, key = NULL, model = NULL) {
   )
 }
 
+#' Mask a stored API key for display
+#' @noRd
+.mask_key <- function(key) {
+  if (!nzchar(key)) return("<empty>")
+  if (nchar(key) <= 8L) return("****")
+  paste0("****", substr(key, nchar(key) - 3L, nchar(key)))
+}
+
+#' Show the current LLM service configuration
+#' @description Reads the configuration written by \code{\link{set_llm}()} and
+#'   reports it, so you do not have to open the YAML file yourself. The API key
+#'   is masked by default; pass \code{show_key = TRUE} to print it in full.
+#'   Requests made by \code{\link{chat_llm}()} always use the stored key as-is,
+#'   whatever this function displays.
+#'
+#' @param show_key logical, print and return the API key in full instead of a
+#'   masked form. Default \code{FALSE}.
+#'
+#' @returns A named list invisibly, with elements \code{provider}, \code{url},
+#'   \code{model}, \code{key} (masked unless \code{show_key = TRUE}) and
+#'   \code{config_path}. The same fields are reported through \code{message()}.
+#' @examplesIf nzchar(Sys.getenv("LLMJOIN_API_KEY"))
+#' # the key is read from the environment so a deliberate run cannot overwrite
+#' # your real config with a placeholder credential
+#' set_llm(provider = "openai", key = Sys.getenv("LLMJOIN_API_KEY"))
+#' get_llm()
+#' get_llm(show_key = TRUE)
+#' @export
+get_llm <- function(show_key = FALSE) {
+  if (length(show_key) != 1L || !is.logical(show_key) || is.na(show_key)) {
+    stop(
+      "'show_key' must be a single TRUE or FALSE. ",
+      "Use get_llm(show_key = TRUE) to print the full key."
+    )
+  }
+
+  cfg <- .read_config()
+  key_display <- if (isTRUE(show_key)) cfg$key else .mask_key(cfg$key)
+
+  message("LLM config read from `", cfg$config_path, "`.")
+  message("  Provider: ", cfg$provider)
+  message("  Model: ", cfg$model)
+  message("  URL: ", cfg$url)
+  message("  Key: ", key_display)
+  if (!isTRUE(show_key)) {
+    message("  (pass show_key = TRUE to print the full key)")
+  }
+
+  cfg$key <- key_display
+  invisible(cfg)
+}
+
 #' Send message to LLM server
 #'
 #' This function sends a message to the LLM model and retrieves the result.
