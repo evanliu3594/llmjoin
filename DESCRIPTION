@@ -19,7 +19,8 @@ Imports:
     jsonlite,
     config
 Suggests:
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    withr
 Depends:
     R (>= 4.2.0)
 URL: https://github.com/evanliu3594/llmjoin
