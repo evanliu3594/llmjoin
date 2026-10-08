@@ -50,7 +50,7 @@ llmjoin:用 LLM 做数据框模糊连接(拼写变体、跨语言、精度差异
    - 用户可见输出用 `message()` / `warning()` / `stop()`,禁止 `cat()`。
    - 严禁提交 API key、密钥或真实配置文件。
    - **包自身不得把明文凭据推到任何用户可见渠道**:`message()` / `warning()` / `stop()` 的文案只可含 provider / model / URL / 配置路径,不得含 `LLMJOIN_key` 的值;由 `tests/testthat/test-no_key_leak.R` 固定(该文件另含一条"检测器确实认得出明文"的正向对照,防止五条负向断言空过)。文档与示例教用户从环境变量传 key,不教字面量。
-2. **测试红线**:交付前 `testthat::test_local()` 必须全绿(当前基线:371 项断言,0 失败);测试不得依赖真实 LLM 服务,一律用 `local_mocked_bindings()` 打桩。
+2. **测试红线**:交付前 `testthat::test_local()` 必须全绿(当前基线:416 项断言,0 失败);测试不得依赖真实 LLM 服务,一律用 `local_mocked_bindings()` 打桩。
 3. **防伪造校验是安全特性**:`parse_joint()` 的 `x_keys` / `y_keys` 白名单过滤不得移除或弱化;`build_joint()` / `llm_join()` 必须默认传键值集合。
 4. **API 兼容**:导出函数的签名或语义变更必须记入 NEWS.md 当前版本段,并说明迁移方式。
 5. **base R 优先**:禁止引入 tidyverse / magrittr / readr;管道用 `|>`,匿名函数用 `\(x)`,字符串处理优先 base 函数。
@@ -119,18 +119,26 @@ llmjoin:用 LLM 做数据框模糊连接(拼写变体、跨语言、精度差异
   `provider_url()`。新增 provider = 注册表加一项 + 四个函数各加一个 case。
 - **Join 层** `R/llmjoin.R`:
   `tbl2md()`(data.frame/向量 → markdown 表)→
-  `joint_prompt()`(两键列 → 匹配提示词)→
+  `joint_prompt()`(两键列 → 匹配提示词;`x`/`y` 允许 data.frame 或向量,向量内部标为
+  column 1/column 2;承诺被 `parse_joint()` 依赖:纯 CSV 行、禁 markdown 管道表与制表符、
+  **每个列1值恰好一行并写明期望行数**、**值逐字复制含前导零**)→
   `build_joint(x, y, key1, key2, ...)`(入口校验 x/y 为 data.frame、键名为存在的列,辅助函数
   `.validate_key()` → 造 prompt → `chat_llm()` → `parse_joint()`,自动传
   `x_keys`/`y_keys`)→
   `parse_joint(llm_response, key1, key2, x_keys, y_keys)`(剥 markdown fence → rle 取最长含逗号
-  行块 → 表头探测/补齐 → `utils::read.csv` → 防伪造过滤 → 未匹配键提示
-  `.warn_unmatched()`,x/y 双侧各一条 warning,真实 NA 不计,只提示不删行)→
+  行块 → 表头探测/补齐 → `.count_fields()` 逐行字段数校验(非 2 字段点名行号并忽略,全废则
+  报 `does not look like a two-column mapping table`)→ `utils::read.csv` → 完全重复行去重
+  (message)→ `.filter_key_column()` 防伪造过滤(先经 `.canon_key()`/`.recover_keys()` 做
+  **唯一命中**归一化恢复:大小写/首尾空白/数字形态如 `1`→`01`,恢复以 message 报告;命中多个原始键
+  则按 ambiguous 丢弃;`Feb`→`February` 这类缩写展开不属恢复范围)→ 一对多警告(只提示不删)→
+  未匹配键提示 `.warn_unmatched()`(x/y 双侧各一条 warning,真实 NA 不计,只提示不删行;
+  返回行数少于键值数时追加"疑似截断,提高 `.max_tokens` 重试")→
   `llm_join()`(build_joint + 两次显式 `merge()`;x 已含名为 `key2` 的列时靠 merge 后缀
   探测定位 joint 键列)。
 - **工具** `R/utils.R`:`%||%`、`globalVariables`、NAMESPACE imports(httr/jsonlite)。
-- **测试** `tests/testthat/`:`test-parse_joint.R`、`test-llm_join.R`、`test-tbl2md.R`、
-  `test-providers.R`、`test-chat_llm.R`、`test-build_joint.R`;mock 模式
+- **测试** `tests/testthat/`:`test-parse_joint.R`、`test-joint_prompt.R`、`test-llm_join.R`、
+  `test-tbl2md.R`、`test-providers.R`、`test-chat_llm.R`、`test-get_llm.R`、`test-set_llm.R`、
+  `test-no_key_leak.R`、`test-build_joint.R`;mock 模式
   `local_mocked_bindings(chat_llm = function(...) "...", .package = "llmjoin")`。
 
 ### 已知问题(待修复,详见 handoff/)
@@ -143,12 +151,14 @@ handoff/261005_修复遗留问题5至8.md)。261006 完成 DeepSeek provider、�
 reasoning 请求体修复与 E1/E2 增强(见
 handoff/261006_默认模型与DeepSeek及E1E2.md)。剩余待办:
 
-1. 【部分核实(261008)】默认模型与端点路径的真实 API 验证仍未做。已按官方文档核实:
-   deepseek 模型实名 `deepseek-flash` 属实;`base_url` 已改为官方 curl 示例的
-   `https://api.deepseek.com`(去掉了 `/v1`),但**这条新路径未发过真实请求**。
-   openai gpt-6-luna / gemini gemini-3.8-flash 与 openai reasoning 请求体修复(`max_completion_tokens`、
-   省略 temperature)仍未验证。重启冒烟的方式见 §常用命令:设 `LLMJOIN_API_KEY`
-   后跑 `devtools::check(cran = TRUE)`,前提是先用 `set_llm()` 恢复本地配置。
+1. 【部分核实(261008 真实冒烟)】**DeepSeek 已实测通过**:`set_llm(provider="deepseek")` 的
+   `https://api.deepseek.com/chat/completions` + `deepseek-flash` 真实返回 200(最短请求 0.8s,
+   回复 "PONG"),端点路径与模型实名不再是未验证项。仍未验证的是 **openai `gpt-6-luna` /
+   gemini `gemini-3.8-flash`** 与 openai reasoning 请求体修复(`max_completion_tokens`、省略
+   temperature)——本机没有这两家的 key,冒烟需另行配置。新发现(deepseek 特有):
+   `deepseek-flash` 是思考型模型,**`.max_tokens` 给小了(实测 300)会把预算全花在 reasoning 上、
+   `message.content` 返回空串**,`chat_llm()` 此时报 "empty message content … increase .max_tokens"
+   (文案已正确指向原因与修法,无需改动)。默认 30000 不受影响。复现冒烟的方式见 §常用命令。
 2. 【新增(261008),0.3.2 增至五个】五个需要凭据或需要已有配置的示例(`set_llm` /
    `chat_llm` / `build_joint` / `llm_join` / `get_llm`)在 CRAN 检查机上永不执行——
    `@examplesIf` 守卫比 `\donttest` 更严。`get_llm()` 不读环境变量里的凭据,但无配置时
@@ -166,6 +176,13 @@ handoff/261006_默认模型与DeepSeek及E1E2.md)。剩余待办:
    见 handoff/261007_GitHub缓存支持请求.md 附录;截至 261008 12:00 无回复,按拍板
    不重复开票。Support 回复后:执行则复测 6 个 SHA 并关闭本项,以非敏感数据为由
    拒绝则回退为等待服务端 GC。
+5. 【新增(261008),部分核实】`joint_prompt()` 在 0.3.2 加严了三条承诺(逐字复制含前导零、
+   恰好 N 行不重复、纯 CSV 禁管道表与制表符),`parse_joint()` 相应加了归一化恢复与畸形行诊断。
+   核实情况:**deepseek-flash 三次真实调用全部遵守**(响应为 `01,January / 02,Feb / 04,`,
+   行数正确、值逐字复制、04 因"May 不是 April"正确留空);**openai / gemini / claude 是否遵守
+   未验证**(本机无 key)。两条边界:① 缩写展开(`Feb` 被答成 `February`)**不在恢复范围内**——
+   那是不同的字符串,只能靠提示词约束,命中不了仍按伪造丢弃;② 归一化恢复只在"唯一命中原始键"
+   时进行,不得放宽为模糊匹配(根 P0.3)。
 
 ## 常用命令
 

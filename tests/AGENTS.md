@@ -4,7 +4,7 @@
 
 ## 规则
 
-- 红线:交付前 `testthat::test_local()` 全绿,当前基线 **371 项断言、0 失败**(随改动更新本行与根 P0.2)。
+- 红线:交付前 `testthat::test_local()` 全绿,当前基线 **416 项断言、0 失败**(随改动更新本行与根 P0.2)。
 - 测试不得依赖真实 LLM 服务,一律 `local_mocked_bindings()` 打桩(根 P0.2)。
 - 新场景先写骨架(G-W-T 注释 + 夹具 + mock 桩)再填断言与实现;失败信息必须能定位到场景。
 - 断言 markdown / 含 `|` 的字符串用 `expect_match(..., fixed = TRUE)`(261004 曾因 `|` 是正则
@@ -24,6 +24,7 @@
 | `test-get_llm.R` | get_llm 正常读取与打印、脱敏边界(≤8 全遮 / >8 露末 4 / 空串 `<empty>`)、配置故障路径、`show_key` 参数校验、无写副作用 | 现行 |
 | `test-set_llm.R` | set_llm 的 key 入参护栏(missing/NULL/`""`/零长/长度>1/NA/非字符 共用一条指引)、provider 校验先于 key、正常写入与报告 | 现行 |
 | `test-no_key_leak.R` | 凭据不回显护栏(根 P0.1):`set_llm` 消息、`chat_llm` 三类错误文案与 `.verbose` 过程消息均不含明文 key,末条为正向对照 | 现行 |
+| `test-joint_prompt.R` | joint_prompt 输出承诺(逐字复制、恰好 N 行、禁管道表与制表符)与两种入参形态(data.frame/向量) | 现行 |
 | `test-build_joint.R` | build_joint 键名/data.frame 入口校验 | 现行 |
 
 ## 本目录特有要点

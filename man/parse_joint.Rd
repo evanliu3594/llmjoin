@@ -16,22 +16,29 @@ parse_joint(llm_response, key1, key2, x_keys = NULL, y_keys = NULL)
 \item{x_keys}{character vector of unique key values from the left-hand-side
 data.frame. If provided, values in the parsed key1 column not found in
 this set are considered LLM fabrications and dropped with a warning.
-The literal string "NA" is accepted when the key set contains actual NA
-values.}
+A value differing from exactly one original key only by case, padding
+whitespace or numeric form ("1" for "01") is recovered to that original and
+announced by message, since dropping it would lose a correct match; a value
+whose normalised form fits several originals is dropped as ambiguous.
+Abbreviation changes ("Feb" answered as "February") are not recoverable --
+the prompt asks the model to copy values exactly. The literal string "NA"
+is accepted when the key set contains actual NA values.}
 
 \item{y_keys}{character vector of unique key values from the right-hand-side
-data.frame. If provided, values in the parsed key2 column not found in
-this set (excluding NA for "no match") are considered LLM fabrications
-and dropped with a warning. The literal string "NA" is accepted when the
-key set contains actual NA values.}
+data.frame. Handled exactly like `x_keys`, except that an empty cell (the
+prompt's way of saying "no reasonable match") is kept as `NA` and never
+counts as a fabrication.}
 }
 \value{
 a 2-column data.frame mapping values from key1 to key2.
 }
 \description{
 Strips markdown fences, extracts the longest consecutive block of
-comma-separated lines, ensures a header row matching `key1,key2`
-is present, and parses the CSV into a 2-column data.frame.
+comma-separated lines, drops lines that do not hold exactly two fields
+(naming them in a warning), ensures a header row matching `key1,key2`
+is present, and parses the CSV into a 2-column data.frame. Exact duplicate
+rows are dropped with a message, and a `key1` value carrying several mappings
+is reported because it multiplies the joined rows.
 }
 \details{
 When `x_keys`/`y_keys` are provided, original keys that never appear in

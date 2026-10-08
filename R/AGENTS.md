@@ -17,11 +17,17 @@
 |---|---|---|
 | `connection.R` | `set_llm()` 写配置(key 入参护栏) / `get_llm()` 读配置(key 默认脱敏) / 私有 `.read_config()` 校验 / `chat_llm()` 唯一 LLM 调用入口(`.message` 强转、经 `.read_config()` 取明文 key) | 现行 |
 | `providers.R` | provider 注册表(openai/claude/gemini/deepseek)+ headers/body/parse/url 四函数 | 现行 |
-| `llmjoin.R` | join 管线:tbl2md → joint_prompt → build_joint → parse_joint → llm_join | 现行 |
+| `llmjoin.R` | join 管线:tbl2md → joint_prompt(承诺行数与逐字复制) → build_joint → parse_joint(字段数校验、重复行去重、唯一命中归一化恢复、防伪造、未匹配与截断提示) → llm_join | 现行 |
 | `utils.R` | `%||%`、globalVariables、NAMESPACE imports | 现行 |
 
 ## 本目录特有要点
 
+- **`strsplit("02,", ",")` 会丢掉尾随空字段**(返回长度 1)。数 CSV 字段要数**分隔符**
+  (`1 + 逗号数`),不能用 `lengths(strsplit())`:`.count_fields()` 首版就是这么写的,结果把
+  提示词自己要求的"`02,` = 无匹配"合法行判成畸形并删掉,被 3 条既有测试当场抓住(261008)。
+- **归一化恢复(`.recover_keys`)只在"唯一命中原始键"时进行**,不得放宽成模糊匹配或相似度匹配;
+  命中多个原始键就按 ambiguous 丢弃并报警告。白名单本体是安全特性(根 P0.3),恢复只是把
+  "大小写/首尾空白/数字形态"这类等价写法映射回原值,不引入任何原表不存在的新值。
 - **R/ 里的字符串字面量必须纯 ASCII**:`R CMD check --as-cran` 的
   `checking code files for non-ASCII characters` 会把含 `—`/中文等字符的**代码/NAMESPACE**
   判成 WARNING(portable packages 要求);**注释里的非 ASCII 是允许的**(261008 实测:

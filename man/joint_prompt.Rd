@@ -16,6 +16,7 @@ A character string containing the matching prompt.
 }
 \description{
 Generate a prompt to guide the LLM in generating a joint for data frame joining, leveraging the two key columns from the tables to be connected.
+The prompt pins what \code{\link{parse_joint}()} can check: plain CSV lines (no markdown tables, tabs or fences), exactly one line per value of column 1, and every value copied character for character including its leading zeros -- a model that normalises "01" to "1" otherwise has to be re-matched by recovery.
 As of 2025/04/10, DeepSeek R1 and gpt-4.1-mini showed the best result; other LLMs might fabricate non-existent data in the result.
 }
 \examples{

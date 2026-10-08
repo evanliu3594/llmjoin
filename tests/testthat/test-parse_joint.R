@@ -659,3 +659,211 @@ describe("unmatched-key feedback (E2)", {
   })
 
 })
+
+# P1-P3 + P5: response-shape hardening, measured on 2026-10-08 against 17
+# realistic LLM response shapes (matrix recorded in the 261008 handoff, 附录 B).
+# The failures that mattered were all silent: a value the model normalises
+# (01 -> 1, Feb -> February) was reported as a fabrication and the row lost; a
+# malformed line (unquoted comma, trailing comma, refusal prose) collapsed the
+# whole response to 0 rows with a misleading diagnosis; and a one-to-many or
+# duplicated mapping silently multiplied the join rows.
+describe("response shape hardening", {
+
+    it("recovers a numeric-normalised key1 value (01 vs 1)", {
+      # Given: x_keys c("01","02","04") and a response echoing "1" for "01"
+      # When:  parse_joint() runs
+      # Then:  3 rows; id is the ORIGINAL "01"; nothing reported as fabricated,
+      #   and the recovery is announced as a message (not a warning)
+      msgs <- character(0)
+      infos <- character(0)
+      result <- withCallingHandlers(
+        parse_joint("1,January\n02,Feb\n04,May", key1 = "id", key2 = "month",
+                    x_keys = c("01", "02", "04")),
+        warning = function(w) {
+          msgs <<- c(msgs, conditionMessage(w)); invokeRestart("muffleWarning")
+        },
+        message = function(m) {
+          infos <<- c(infos, conditionMessage(m)); invokeRestart("muffleMessage")
+        }
+      )
+      expect_equal(nrow(result), 3)
+      expect_equal(result[["id"]], c("01", "02", "04"))
+      expect_false(any(grepl("fabricated", msgs, fixed = TRUE)))
+      expect_match(paste(infos, collapse = ""), "'1' -> '01'", fixed = TRUE)
+    })
+
+    it("recovers a case-normalised key2 value", {
+      # Given: y_keys "January" and a response writing "january"
+      # When:  parse_joint() runs
+      # Then:  the row survives and the value is replaced by the original
+      #   "January", so the later merge() can actually match it
+      msgs <- character(0)
+      result <- withCallingHandlers(
+        parse_joint("01,january\n02,Feb", key1 = "id", key2 = "month",
+                    y_keys = c("January", "Feb")),
+        warning = function(w) {
+          msgs <<- c(msgs, conditionMessage(w)); invokeRestart("muffleWarning")
+        },
+        message = function(m) invokeRestart("muffleMessage")
+      )
+      expect_equal(nrow(result), 2)
+      expect_equal(result[["month"]], c("January", "Feb"))
+      expect_false(any(grepl("fabricated", msgs, fixed = TRUE)))
+    })
+
+    it("still drops a genuine fabrication", {
+      # Given: a value with no counterpart under any normalisation
+      # When:  parse_joint() runs
+      # Then:  it is dropped and still reported as fabricated (P0.3 intact)
+      msgs <- character(0)
+      result <- withCallingHandlers(
+        parse_joint("01,January\n99,Foo", key1 = "id", key2 = "month",
+                    x_keys = c("01", "02"), y_keys = c("January", "Feb")),
+        warning = function(w) {
+          msgs <<- c(msgs, conditionMessage(w)); invokeRestart("muffleWarning")
+        },
+        message = function(m) invokeRestart("muffleMessage")
+      )
+      expect_equal(nrow(result), 1)
+      expect_true(any(grepl("fabricated", msgs, fixed = TRUE)))
+    })
+
+    it("drops a normalised value that matches two original keys", {
+      # Given: x_keys holding both "01" and "1" — the normalised form of "001"
+      #   maps to two originals, so recovery would be a guess
+      # When:  parse_joint() runs
+      # Then:  the row is dropped and the warning says why (ambiguity, not fabrication)
+      msgs <- character(0)
+      result <- withCallingHandlers(
+        parse_joint("001,January", key1 = "id", key2 = "month",
+                    x_keys = c("01", "1")),
+        warning = function(w) {
+          msgs <<- c(msgs, conditionMessage(w)); invokeRestart("muffleWarning")
+        },
+        message = function(m) invokeRestart("muffleMessage")
+      )
+      expect_equal(nrow(result), 0)
+      expect_true(any(grepl("ambiguous", msgs, fixed = TRUE)))
+    })
+
+    it("names the offending line instead of calling it a fabrication", {
+      # Given: one row whose value contains an unquoted comma (3 fields)
+      # When:  parse_joint() runs
+      # Then:  the good rows survive, and the warning points at line 2 and its
+      #   field count rather than mislabelling 'January','Feb','May' as invented
+      msgs <- character(0)
+      result <- withCallingHandlers(
+        parse_joint("01,January\n02,Feb, US\n04,May", key1 = "id", key2 = "month",
+                    x_keys = c("01", "02", "04"), y_keys = c("January", "Feb", "May")),
+        warning = function(w) {
+          msgs <<- c(msgs, conditionMessage(w)); invokeRestart("muffleWarning")
+        },
+        message = function(m) invokeRestart("muffleMessage")
+      )
+      expect_equal(nrow(result), 2)
+      expect_match(paste(msgs, collapse = ""), "line 2", fixed = TRUE)
+      expect_match(paste(msgs, collapse = ""), "3", fixed = TRUE)
+      expect_false(any(grepl("fabricated", msgs, fixed = TRUE)))
+    })
+
+    it("diagnoses a prose refusal instead of mislabelling the valid keys", {
+      # Given: a refusal sentence that happens to contain a comma, so it looks
+      #   like one mapping pair and cannot be told apart from a bad key by shape
+      # When:  parse_joint() runs with the real key sets
+      # Then:  it still returns 0 rows (the documented all-fabricated outcome),
+      #   but the warning now names the format as the likely cause instead of
+      #   listing 'January','Feb','May' as invented values
+      msgs <- character(0)
+      result <- withCallingHandlers(
+        parse_joint("I cannot match these values reliably, sorry.",
+                    key1 = "id", key2 = "month",
+                    x_keys = c("01", "02"), y_keys = c("January", "Feb")),
+        warning = function(w) {
+          msgs <<- c(msgs, conditionMessage(w)); invokeRestart("muffleWarning")
+        },
+        message = function(m) invokeRestart("muffleMessage")
+      )
+      expect_equal(nrow(result), 0)
+      expect_true(any(grepl("answered in prose", msgs, fixed = TRUE)))
+      expect_false(any(grepl(".max_tokens", msgs, fixed = TRUE)))
+    })
+
+    it("stops when every line carries a trailing comma", {
+      # Given: a response where each row ends with an extra comma (3 fields each)
+      # When:  parse_joint() runs
+      # Then:  the same clear error, not a 0-row result
+      expect_error(
+        parse_joint("01,January,\n02,Feb,\n04,May,", key1 = "id", key2 = "month",
+                    x_keys = c("01", "02", "04"), y_keys = c("January", "Feb", "May")),
+        "does not look like a two-column mapping table",
+        fixed = TRUE
+      )
+    })
+
+    it("warns when one key1 value carries several mappings", {
+      # Given: "02" mapped to both Feb and May
+      # When:  parse_joint() runs
+      # Then:  both rows are kept (choosing for the user would be fabrication), but
+      #   the warning says the join will duplicate that key — previously silent
+      msgs <- character(0)
+      result <- withCallingHandlers(
+        parse_joint("01,January\n02,Feb\n02,May\n04,May", key1 = "id", key2 = "month",
+                    x_keys = c("01", "02", "04"), y_keys = c("January", "Feb", "May")),
+        warning = function(w) {
+          msgs <<- c(msgs, conditionMessage(w)); invokeRestart("muffleWarning")
+        },
+        message = function(m) invokeRestart("muffleMessage")
+      )
+      expect_equal(nrow(result), 4)
+      expect_length(msgs, 1)
+      expect_match(msgs[1], "more than one mapping", fixed = TRUE)
+      expect_match(msgs[1], "'02'", fixed = TRUE)
+    })
+
+    it("drops exact duplicate rows and announces it", {
+      # Given: the same pair emitted twice
+      # When:  parse_joint() runs (manual workflow, no key sets)
+      # Then:  one copy survives and a message names the duplicate, because two
+      #   identical rows would silently double the joined output
+      infos <- character(0)
+      result <- withCallingHandlers(
+        parse_joint("01,January\n01,January\n02,Feb", key1 = "id", key2 = "month"),
+        message = function(m) {
+          infos <<- c(infos, conditionMessage(m)); invokeRestart("muffleMessage")
+        }
+      )
+      expect_equal(nrow(result), 2)
+      expect_match(paste(infos, collapse = ""), "duplicate", fixed = TRUE)
+    })
+
+    it("adds a truncation hint when fewer lines came back than there are keys", {
+      # Given: 3 x keys but only 2 mapping lines in the response
+      # When:  parse_joint() runs
+      # Then:  the unmatched-key warning also names the likely cause and the fix
+      msgs <- character(0)
+      suppressMessages(withCallingHandlers(
+        parse_joint("01,January\n02,Feb", key1 = "id", key2 = "month",
+                    x_keys = c("01", "02", "04")),
+        warning = function(w) {
+          msgs <<- c(msgs, conditionMessage(w)); invokeRestart("muffleWarning")
+        }
+      ))
+      expect_true(any(grepl(".max_tokens", msgs, fixed = TRUE)))
+    })
+
+    it("does not add the hint when every line was returned (regression)", {
+      # Given: 2 keys and 2 mapping lines, one of them fabricated
+      # When:  parse_joint() runs
+      # Then:  the shortfall is explained by the fabrication, so no truncation hint
+      msgs <- character(0)
+      suppressMessages(withCallingHandlers(
+        parse_joint("01,January\n99,Feb", key1 = "id", key2 = "month",
+                    x_keys = c("01", "02")),
+        warning = function(w) {
+          msgs <<- c(msgs, conditionMessage(w)); invokeRestart("muffleWarning")
+        }
+      ))
+      expect_false(any(grepl(".max_tokens", msgs, fixed = TRUE)))
+    })
+
+})
