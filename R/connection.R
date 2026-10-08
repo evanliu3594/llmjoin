@@ -68,6 +68,50 @@ set_llm <- function(provider = "openai", url = NULL, key = NULL, model = NULL) {
   )
 }
 
+#' Read and validate the stored LLM configuration
+#' @noRd
+.read_config <- function() {
+  config_dir <- tools::R_user_dir("llmjoin", "config")
+  config_path <- file.path(config_dir, "LLMJOIN.yml")
+  if (!file.exists(config_path)) {
+    stop(
+      "LLM service not configured. Use `set_llm()` to set up your API key and endpoint."
+    )
+  }
+  raw <- tryCatch(
+    config::get(file = config_path, use_parent = FALSE),
+    error = \(e) {
+      stop(
+        "Invalid config file (",
+        config_path,
+        "): ",
+        e$message,
+        "\nUse set_llm() to reconfigure."
+      )
+    }
+  )
+  if (is.null(raw$LLM_URL) || is.null(raw$LLM_key)) {
+    stop("Config is missing URL or key. Use set_llm() to reconfigure.")
+  }
+
+  provider <- raw$LLM_provider %||% "openai"
+  if (!provider %in% names(.providers)) {
+    stop(
+      "Unknown provider '",
+      provider,
+      "' in config. Run set_llm() to reconfigure."
+    )
+  }
+
+  list(
+    provider = provider,
+    url = raw$LLM_URL,
+    key = raw$LLM_key,
+    model = raw$LLM_model %||% .providers[[provider]]$default_model,
+    config_path = config_path
+  )
+}
+
 #' Send message to LLM server
 #'
 #' This function sends a message to the LLM model and retrieves the result.
@@ -122,41 +166,10 @@ chat_llm <- function(
   }
 
   # Load and validate config
-  config_dir <- tools::R_user_dir("llmjoin", "config")
-  config_path <- file.path(config_dir, "LLMJOIN.yml")
-  if (!file.exists(config_path)) {
-    stop(
-      "LLM service not configured. Use `set_llm()` to set up your API key and endpoint."
-    )
-  }
-  LLMJOIN_CONFIG <- tryCatch(
-    config::get(file = config_path, use_parent = FALSE),
-    error = \(e) {
-      stop(
-        "Invalid config file (",
-        config_path,
-        "): ",
-        e$message,
-        "\nUse set_llm() to reconfigure."
-      )
-    }
-  )
-  if (is.null(LLMJOIN_CONFIG$LLM_URL) || is.null(LLMJOIN_CONFIG$LLM_key)) {
-    stop("Config is missing URL or key. Use set_llm() to reconfigure.")
-  }
-
-  provider <- LLMJOIN_CONFIG$LLM_provider %||% "openai"
-  if (!provider %in% names(.providers)) {
-    stop(
-      "Unknown provider '",
-      provider,
-      "' in config. Run set_llm() to reconfigure."
-    )
-  }
-  model <- .model %||%
-    LLMJOIN_CONFIG$LLM_model %||%
-    .providers[[provider]]$default_model
-  url <- LLMJOIN_CONFIG$LLM_URL
+  cfg <- .read_config()
+  provider <- cfg$provider
+  model <- .model %||% cfg$model
+  url <- cfg$url
 
   if (.verbose) {
     message("Sending request to ", provider, " using model ", model, "...")
@@ -170,7 +183,7 @@ chat_llm <- function(
   )
   headers <- do.call(
     httr::add_headers,
-    provider_headers(provider, LLMJOIN_CONFIG$LLM_key)
+    provider_headers(provider, cfg$key)
   )
 
   response <- tryCatch(
