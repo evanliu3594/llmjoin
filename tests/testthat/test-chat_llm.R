@@ -170,4 +170,37 @@ describe("chat_llm", {
 
   })
 
+  describe("config read errors (characterization before the .read_config() refactor)", {
+
+    it("errors when no config file exists", {
+      # Given: a fresh temp config dir holding no LLMJOIN.yml
+      # When:  chat_llm(.message = "hi")
+      # Then:  the error names set_llm(); no HTTP stub is installed, so passing
+      #   proves the failure happens before any request is attempted
+      withr::local_envvar(R_USER_CONFIG_DIR = tempfile(pattern = "llmjoin-test-"))
+      expect_error(
+        chat_llm(.message = "hi"),
+        "LLM service not configured. Use `set_llm()` to set up your API key and endpoint.",
+        fixed = TRUE
+      )
+    })
+
+    it("errors when the config file is not valid YAML", {
+      # Given: a hand-written config whose first token is a tab (the yaml
+      #   scanner rejects it; verified on config 0.6 + R 4.6.1)
+      # When:  chat_llm(.message = "hi")
+      # Then:  the error reports 'Invalid config file', the config path, and
+      #   the set_llm() reconfigure guidance
+      withr::local_envvar(R_USER_CONFIG_DIR = tempfile(pattern = "llmjoin-test-"))
+      cfg_dir <- tools::R_user_dir("llmjoin", "config")
+      dir.create(cfg_dir, showWarnings = FALSE, recursive = TRUE)
+      writeLines("\t- not: a mapping:\tabc", file.path(cfg_dir, "LLMJOIN.yml"))
+      err <- tryCatch(chat_llm(.message = "hi"), error = function(e) conditionMessage(e))
+      expect_match(err, "Invalid config file", fixed = TRUE)
+      expect_match(err, "LLMJOIN.yml", fixed = TRUE)
+      expect_match(err, "Use set_llm() to reconfigure.", fixed = TRUE)
+    })
+
+  })
+
 })
