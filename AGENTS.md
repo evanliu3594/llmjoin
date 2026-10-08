@@ -27,7 +27,6 @@ llmjoin:用 LLM 做数据框模糊连接(拼写变体、跨语言、精度差异
 | `tests/` | testthat 测试 | `tests/AGENTS.md` |
 | `man/` | roxygen 生成文档,不手改 | R/ 源文件内嵌 roxygen 注释 |
 | `handoff/` | 交接记录,兼任项目时间线 | 根 §交接记录约定 |
-| `docs/superpowers/plans/` | 单次特性的实施计划(GWT 场景矩阵);`.Rbuildignore` 排除,不进 R CMD 构建 | 对应版本的 `handoff/` 记录 |
 | `DESCRIPTION` / `NAMESPACE` / `NEWS.md` / `README.md` | 包元数据 / 导出表 / 用户可见变更 / 使用说明 | — |
 
 ## 已拍板口径(用户确认,勿再改)
@@ -35,7 +34,7 @@ llmjoin:用 LLM 做数据框模糊连接(拼写变体、跨语言、精度差异
 | # | 口径 | 决定 | 日期 |
 |---|---|---|---|
 | ① | 时间线载体 | `handoff/` 兼任项目时间线,**不建 HISTORY.md**(261004 拍板;261007 起交接协议全面对齐 project-conventions 技能——该技能已以 `handoff/` 交接目录取代 HISTORY.md 单文件,口径收敛,无冲突) | 261007 |
-| ② | 目录级文档 | 仅建 `R/`、`tests/` 两份 AGENTS.md;其余目录不建(man/ 由工具生成,NEWS.md 承载用户可见变更) | 261004 |
+| ② | 目录级文档 | 仅建 `R/`、`tests/` 两份 AGENTS.md;其余目录不建(man/ 由工具生成,NEWS.md 承载用户可见变更)。**不新建顶层目录放开发辅助产物**——实施计划、场景矩阵、审查记录一律进 `handoff/`;目录与文件名亦不得点名开发辅助工具(与口径③同向)。维护者 261008 就 `docs/superpowers/plans/` 的出现重申本条 | 261004(261008 重申) |
 | ③ | 开发辅助工具 | 提交信息、用户可见文档、交接记录**不点名开发辅助工具**;provider 功能语境除外(接入新 LLM 服务时如实描述) | 261004 |
 | ④ | 版本管理 | AGENTS 体系(根 + `R/`、`tests/`)与 `handoff/` **纳入 git 追踪**;`.Rbuildignore` 维持排除,不进 R CMD 构建(261005 维护者拍板;历史记录的措辞中性化以维护者 261004 就地修订为先例) | 261005 |
 | ⑤ | 历史重写 | 261005 已对全历史执行痕迹清除重写并 force-push:b9b1c4b 起的提交 SHA 均已改变(映射见 handoff/261005_全量清除开发助手痕迹.md),旧记录中的 SHA 引用以该映射为准;归档于仓库外 bundle 与本地 `backup/` 分支,永不推送 | 261005 |

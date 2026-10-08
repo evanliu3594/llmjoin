@@ -5,7 +5,6 @@
 ^R/AGENTS\.md$
 ^tests/AGENTS\.md$
 ^handoff$
-^docs$
 ^test_output\.txt$
 ^CRAN-SUBMISSION$
 ^cran-comments\.md$
