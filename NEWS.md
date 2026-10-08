@@ -1,12 +1,12 @@
 # llmjoin 0.3.2
 
-## fixes
-- `chat_llm()` now stops before sending a request when the stored key is an empty string (`LLM_key: ''` in the config file). It used to go ahead with a blank credential, so the failure surfaced as the provider's authentication error instead of pointing at the real cause. The new message names the file and says to fill the key in or run `set_llm()`. Reachable mainly after hand-editing the config; `get_llm()` still shows `<empty>` for such a key rather than erroring.
-
 ## changes
 - Added `get_llm()`: shows the configuration written by `set_llm()` — provider, model, endpoint and the config file path — without opening the YAML file. The API key is masked by default: keys longer than 8 characters show only their last 4, shorter keys show `****`, and a blank stored key shows `<empty>`. `get_llm(show_key = TRUE)` is the only way to print or return the full key, and the returned list carries exactly what was printed, so `get_llm()$key` cannot leak the credential into a log or a screenshot. `chat_llm()` still authenticates with the stored key as-is.
 - Documented how to keep the API key out of your `.Rhistory`: `set_llm()` and the README now point at passing `Sys.getenv("LLMJOIN_API_KEY")` instead of typing the key as a string literal, which is written verbatim into your history, screenshots and any script you commit. The package's own channels — `set_llm()` progress messages, `chat_llm()` verbose lines and every error text — never contain the stored key, and that property is now pinned by tests.
+
+## fixes
 - `set_llm()` now rejects every unusable `key` shape (missing, `NULL`, `""`, `character(0)`, length > 1, `NA`) with a single message that names the argument and says what to check — an empty `key` almost always means the environment variable you passed is unset, so the message points at `nzchar(Sys.getenv("LLMJOIN_API_KEY"))` and at restarting R to load `.Renviron`. These calls previously failed with `'key' must be provided` or leaked an internal error (`condition has length > 1`, `argument is of length zero`) that said nothing about the fix.
+- `chat_llm()` now stops before sending a request when the stored key is an empty string (`LLM_key: ''` in the config file). It used to go ahead with a blank credential, so the failure surfaced as the provider's authentication error instead of pointing at the real cause. The new message names the file and says to fill the key in or run `set_llm()`. Reachable mainly after hand-editing the config; `get_llm()` still shows `<empty>` for such a key rather than erroring.
 
 # llmjoin 0.3.1
 

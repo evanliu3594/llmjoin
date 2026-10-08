@@ -40,7 +40,7 @@ llmjoin:用 LLM 做数据框模糊连接(拼写变体、跨语言、精度差异
 | ⑤ | 历史重写 | 261005 已对全历史执行痕迹清除重写并 force-push:b9b1c4b 起的提交 SHA 均已改变(映射见 handoff/261005_全量清除开发助手痕迹.md),旧记录中的 SHA 引用以该映射为准;归档于仓库外 bundle 与本地 `backup/` 分支,永不推送 | 261005 |
 | ⑥ | claude 字样范围 | provider 注册表与用户文档保留 claude 配置入口(provider 功能语境,口径③除外条款适用);261005 清除的仅为协作者身份痕迹,「provider 语境 claude 除名」问题就此关闭 | 261007 |
 | ⑦ | 不做托管免费端点 | 不提供包内默认可用的托管转发服务端(不建 server/、不持上游 key、不承诺第三方免费额度);新用户路径改为 README 指向服务商 key 申请页,需要凭据的示例用 `@examplesIf nzchar(Sys.getenv("LLMJOIN_API_KEY"))` 守卫。动机:托管端点要求维护者承担域名续费、证书续期、刷屏处置与宕机值守的无限期责任,且包内硬编码 URL 在 CRAN 发布后几乎不可更改;维护者 261008 拍板放弃(决策链见 handoff/261008_示例守卫与DeepSeek端点修正与托管端点放弃.md §3;261008 二次会话修正本指针——原指向的 `261008_放弃托管端点并修示例守卫.md` 是同会话的未入库草稿) | 261008 |
-| ⑧ | 凭据显示口径 | `get_llm()` **默认脱敏** API key:`.mask_key()` 把空串显示为 `<empty>`、`nchar <= 8` 全遮为 `****`、更长的只露末 4 位;返回 list 的 `key` 与打印内容一致,取明文只能显式 `show_key = TRUE`。动机:控制台输出会进 `.Rhistory`、截屏和 CI 日志,默认打印明文等于把凭据外泄做成包的标准动作。请求路径不受影响——`chat_llm()` 始终用存储的明文 key,该行为由测试固定;维护者 261008 拍板。**输入侧边界**(同轮追问的结论):脱敏原则不对称——包管得住的是"自己不把明文凭据推到不可控渠道"(已入 P0.1),管不住"用户在控制台敲字面量因而进了 `.Rhistory`",那只能改获取渠道,故 README 与 `set_llm()` 文档推荐 `Sys.getenv("LLMJOIN_API_KEY")`。`ask_key()` 隐藏输入助手(依赖 `getPasswd()`,RStudio 控制台有已知限制)与配置文件 `Sys.chmod(0600)`(Windows 上只切只读位)**两项均未实测**,将来要做先出探针再写码 | 261008 |
+| ⑧ | 凭据显示口径 | `get_llm()` **默认脱敏** API key:`.mask_key()` 把空串显示为 `<empty>`、`nchar <= 8` 全遮为 `****`、更长的只露末 4 位;返回 list 的 `key` 与打印内容一致,取明文只能显式 `show_key = TRUE`。动机:控制台输出会进 `.Rhistory`、截屏和 CI 日志,默认打印明文等于把凭据外泄做成包的标准动作。请求路径不受影响——`chat_llm()` 始终用存储的明文 key,该行为由测试固定;维护者 261008 拍板。**输入侧边界**(同轮追问的结论):脱敏原则不对称——包管得住的是"自己不把明文凭据推到不可控渠道"(已入 P0.1),管不住"用户在控制台敲字面量因而进了 `.Rhistory`",那只能改获取渠道,故 README 与 `set_llm()` 文档推荐 `Sys.getenv("LLMJOIN_API_KEY")`。**261008 探针实测后收口三项**:(a) Windows R 4.6.1 的 base 与 utils **都没有 `getPasswd`**,`readline()` 也不遮蔽——R 控制台做不到 TUI 式密文输入,要遮蔽只能借对话框(`askpass 1.2.1`/`rstudioapi 0.19.0` 本机已装),故**不加 `ask_key()`**;(b) `set_llm()` 的 `key` 参数**保留**——删掉它的收益 `Sys.getenv()` 已零成本提供,代价是破坏性变更、33 处测试重写、以及断掉五个受守卫示例与 CI 的配置通道;(c) 配置文件**不做 `Sys.chmod(0600)`**(Windows 上只切只读位,收益近零) | 261008 |
 
 ## P0 硬约束
 
@@ -175,14 +175,24 @@ Rscript -e 'devtools::test_active_file("tests/testthat/test-parse_joint.R")'
 Rscript -e 'devtools::load_all(".")'            # 交互开发加载
 Rscript -e 'devtools::check()'                  # 完整 R CMD check
 Rscript -e 'devtools::check(cran = TRUE)'       # 投稿口径(= R CMD check --as-cran)
-LLMJOIN_API_KEY=<your-key> Rscript -e 'devtools::check(cran = TRUE)'   # 带 key 冒烟:五个受守卫的示例会真实执行
 Rscript -e 'devtools::document()'               # 生成 man/ 文档
 Rscript -e 'devtools::install()'                # 本地安装(保持与源码同步)
+read -s LLMJOIN_API_KEY && export LLMJOIN_API_KEY && Rscript -e 'devtools::check(cran = TRUE)'   # 带 key 冒烟
 ```
+
+**冒烟命令的写法**:用 `read -s`(从终端读取,不回显、不落 history),**不要**写成
+`LLMJOIN_API_KEY=<真实key> Rscript ...`——那样密钥会进 shell history,与 P0.1 的
+"不把明文凭据推到不可控渠道"同一类泄露。冒烟前提与代价见 §已知问题 1:
+五个受守卫示例会真实执行、真实调用产生费用,并覆盖本地 `LLMJOIN.yml`(跑前先备份该文件)。
 
 **跑 check 前先清 locale 变量**:Git Bash 导出的 `LC_ALL` / `LC_CTYPE` 等 `C.UTF-8`
 值会让 Windows R 启动报错,被 check 记成假的 ERROR/WARNING。用
 `env -u LC_ALL -u LANG -u LC_CTYPE -u LC_COLLATE Rscript ...`。
+
+**本机 `Rscript` 可能不在 PATH**:PATH 仍指向 `C:/Program Files/R/R-4.6.0/bin`,实装是
+`R-4.6.1`,直呼 `Rscript` 报 `No such file or directory`;改用绝对路径
+`"/c/Program Files/R/R-4.6.1/bin/Rscript.exe"`(261008 实测)。多行 R 代码经 `-e '...'`
+传参在本机 Git Bash 下会被引号/编码搞坏(甚至段错误),写 `.R` 脚本文件再执行更可靠。
 
 `--as-cran` **会执行示例**(含 `\donttest`,261008 实测确认),所以 §已拍板口径⑦ 的
 `@examplesIf` 守卫不得移除——否则会把维护者本地的 `LLMJOIN.yml` 覆盖成占位符,
