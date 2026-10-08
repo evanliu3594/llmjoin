@@ -200,4 +200,88 @@ describe("get_llm", {
 
   })
 
+  describe("config failures report the stored path", {
+
+    it("errors when no config file exists", {
+      # Given: an empty temp config dir (no LLMJOIN.yml written at all)
+      # When:  get_llm()
+      # Then:  the error text is byte-identical to the one chat_llm() raises
+      cfg_path <- .local_config_dir()
+      expect_false(file.exists(cfg_path))
+      expect_error(
+        get_llm(),
+        "LLM service not configured. Use `set_llm()` to set up your API key and endpoint.",
+        fixed = TRUE
+      )
+    })
+
+    it("errors when the config file is not valid YAML", {
+      # Given: a config whose first token is a tab (the yaml scanner rejects it)
+      # When:  get_llm()
+      # Then:  the error reports 'Invalid config file', the config path and the
+      #   set_llm() reconfigure guidance
+      .write_raw_config(.local_config_dir(), c("\t- not: a mapping:\tabc"))
+      err <- tryCatch(get_llm(), error = function(e) conditionMessage(e))
+      expect_match(err, "Invalid config file", fixed = TRUE)
+      expect_match(err, "LLMJOIN.yml", fixed = TRUE)
+      expect_match(err, "Use set_llm() to reconfigure.", fixed = TRUE)
+    })
+
+    it("errors when the stored config has no key", {
+      # Given: a hand-written config missing the LLM_key line
+      # When:  get_llm()
+      # Then:  the error names the missing fields and how to fix them
+      .write_raw_config(.local_config_dir(), c(
+        "default:",
+        "  LLM_provider: 'openai'",
+        "  LLM_URL: 'https://api.openai.com/v1/chat/completions'",
+        "  LLM_model: 'test-model'"
+      ))
+      expect_error(
+        get_llm(),
+        "Config is missing URL or key. Use set_llm() to reconfigure.",
+        fixed = TRUE
+      )
+    })
+
+    it("errors when the stored config names an unknown provider", {
+      # Given: a hand-written config with LLM_provider: 'nope'
+      # When:  get_llm()
+      # Then:  the error names the offending provider and points at set_llm()
+      .write_raw_config(.local_config_dir(), c(
+        "default:",
+        "  LLM_provider: 'nope'",
+        "  LLM_URL: 'https://example.org/chat'",
+        "  LLM_key: 'sk-1234567890abcdef'",
+        "  LLM_model: 'test-model'"
+      ))
+      expect_error(
+        get_llm(),
+        "Unknown provider 'nope' in config. Run set_llm() to reconfigure.",
+        fixed = TRUE
+      )
+    })
+
+  })
+
+  describe("show_key argument validation", {
+
+    it("rejects non-logical, NA and length > 1 input", {
+      # Given: a valid stored config
+      # When:  get_llm(show_key = "yes"), get_llm(show_key = NA),
+      #   get_llm(show_key = c(TRUE, TRUE))
+      # Then:  each errors naming 'show_key' and showing the working call
+      cfg_path <- .local_config_dir()
+      suppressMessages(
+        set_llm(provider = "openai", key = "sk-1234567890abcdef", model = "test-model")
+      )
+      for (bad in list("yes", NA, c(TRUE, TRUE))) {
+        err <- tryCatch(get_llm(show_key = bad), error = function(e) conditionMessage(e))
+        expect_match(err, "'show_key' must be a single TRUE or FALSE.", fixed = TRUE)
+        expect_match(err, "get_llm(show_key = TRUE)", fixed = TRUE)
+      }
+    })
+
+  })
+
 })

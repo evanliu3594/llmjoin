@@ -10,6 +10,17 @@
 #   temp dir (R_USER_CONFIG_DIR, verified on R 4.6.1) and the HTTP layer fully
 #   stubbed. No real network, no real user config is touched.
 
+# Helper: fresh config dir for the calling test only; returns the LLMJOIN.yml
+# path. Duplicated in test-get_llm.R because testthat gives every file its own
+# environment and tests/AGENTS.md keeps fixtures inline — keep the two in sync.
+.local_config_dir <- function() {
+  withr::local_envvar(
+    R_USER_CONFIG_DIR = tempfile(pattern = "llmjoin-test-"),
+    .local_envir = parent.frame()
+  )
+  file.path(tools::R_user_dir("llmjoin", "config"), "LLMJOIN.yml")
+}
+
 describe("chat_llm", {
 
   describe("message validation errors (validation precedes the config read)", {
@@ -199,6 +210,39 @@ describe("chat_llm", {
       expect_match(err, "Invalid config file", fixed = TRUE)
       expect_match(err, "LLMJOIN.yml", fixed = TRUE)
       expect_match(err, "Use set_llm() to reconfigure.", fixed = TRUE)
+    })
+
+  })
+
+  describe("request path keeps the plaintext key (refactor guard)", {
+
+    it("passes the unmasked key to provider_headers", {
+      # Given: a 19-character stored key, provider_headers and httr stubbed
+      # When:  chat_llm(.message = "hi")
+      # Then:  provider_headers receives the plaintext key — masking in
+      #   get_llm() is a display concern and must never reach the request
+      .local_config_dir()
+      suppressMessages(
+        set_llm(provider = "openai", key = "sk-1234567890abcdef", model = "test-model")
+      )
+      captured <- new.env()
+      fake_response <- structure(list(status_code = 200L), class = "response")
+      local_mocked_bindings(
+        provider_headers = function(provider, key) {
+          captured$key <- key
+          list(`Content-Type` = "application/json")
+        },
+        .package = "llmjoin"
+      )
+      local_mocked_bindings(
+        POST = function(url, ...) fake_response,
+        content = function(x, ...) '{"choices":[{"message":{"content":"01,January"}}]}',
+        status_code = function(x) 200L,
+        .package = "httr"
+      )
+      chat_llm(.message = "hi")
+      expect_identical(captured$key, "sk-1234567890abcdef")
+      expect_false(identical(captured$key, "****cdef"))
     })
 
   })
