@@ -10,10 +10,10 @@
 #' @param model character, model name. If NULL, auto-set from provider default.
 #'
 #' @returns NULL invisibly. Called for side effect of writing the config file.
-#' @examples
-#' \donttest{
-#'   set_llm(provider = "openai", key = "<your-openai-api-key>", model = "gpt-6-luna")
-#' }
+#' @examplesIf nzchar(Sys.getenv("LLMJOIN_API_KEY"))
+#' # the key is read from the environment so a deliberate run cannot overwrite
+#' # your real config with a placeholder credential
+#' set_llm(provider = "openai", key = Sys.getenv("LLMJOIN_API_KEY"))
 #' @export
 #'
 set_llm <- function(provider = "openai", url = NULL, key = NULL, model = NULL) {
@@ -90,10 +90,8 @@ set_llm <- function(provider = "openai", url = NULL, key = NULL, model = NULL) {
 #' @returns A character string with the LLM's response text.
 #' @export
 #'
-#' @examples
-#' \donttest{
+#' @examplesIf nzchar(Sys.getenv("LLMJOIN_API_KEY"))
 #'   chat_llm("tell a joke.")
-#' }
 chat_llm <- function(
   .message,
   .model = NULL,

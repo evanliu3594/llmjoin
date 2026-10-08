@@ -23,7 +23,7 @@
   ),
   deepseek = list(
     name = "deepseek",
-    base_url = "https://api.deepseek.com/v1",
+    base_url = "https://api.deepseek.com",
     endpoint = "/chat/completions",
     default_model = "deepseek-flash",
     auth_type = "bearer"

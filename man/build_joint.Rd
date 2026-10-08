@@ -26,11 +26,11 @@ a 2-column data.frame mapping values from key1 to key2.
 Build a fuzzy-join joint data.frame via LLM
 }
 \examples{
-\donttest{
+\dontshow{if (nzchar(Sys.getenv("LLMJOIN_API_KEY"))) withAutoprint(\{ # examplesIf}
   build_joint(
     x = data.frame(x = c("01","02","04")),
     y = data.frame(y = c("January","Feb","May")),
     key1 = "x", key2 = "y"
   )
-}
+\dontshow{\}) # examplesIf}
 }

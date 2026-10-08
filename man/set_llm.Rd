@@ -25,7 +25,9 @@ Set up your LLM service with native support for OpenAI, Claude (Anthropic), Gemi
   All information is stored strictly locally in your system configuration and is never uploaded or shared.
 }
 \examples{
-\donttest{
-  set_llm(provider = "openai", key = "<your-openai-api-key>", model = "gpt-6-luna")
-}
+\dontshow{if (nzchar(Sys.getenv("LLMJOIN_API_KEY"))) withAutoprint(\{ # examplesIf}
+# the key is read from the environment so a deliberate run cannot overwrite
+# your real config with a placeholder credential
+set_llm(provider = "openai", key = Sys.getenv("LLMJOIN_API_KEY"))
+\dontshow{\}) # examplesIf}
 }

@@ -72,11 +72,11 @@ describe("provider registry defaults (261006)", {
     # Given: the .providers registry
     # When:  the deepseek entry is inspected
     # Then:  default_model equals "deepseek-flash", base_url equals
-    #   "https://api.deepseek.com/v1", endpoint equals "/chat/completions",
+    #   "https://api.deepseek.com", endpoint equals "/chat/completions",
     #   auth_type equals "bearer"
     ds <- .providers$deepseek
     expect_identical(ds$default_model, "deepseek-flash")
-    expect_identical(ds$base_url, "https://api.deepseek.com/v1")
+    expect_identical(ds$base_url, "https://api.deepseek.com")
     expect_identical(ds$endpoint, "/chat/completions")
     expect_identical(ds$auth_type, "bearer")
   })
@@ -262,12 +262,12 @@ describe("deepseek provider plumbing", {
   })
 
   it("builds the deepseek endpoint url", {
-    # Given: base_url "https://api.deepseek.com/v1"
-    # When:  provider_url("deepseek", "https://api.deepseek.com/v1")
-    # Then:  "https://api.deepseek.com/v1/chat/completions"
+    # Given: base_url "https://api.deepseek.com"
+    # When:  provider_url("deepseek", "https://api.deepseek.com")
+    # Then:  "https://api.deepseek.com/chat/completions"
     expect_identical(
-      provider_url("deepseek", "https://api.deepseek.com/v1"),
-      "https://api.deepseek.com/v1/chat/completions"
+      provider_url("deepseek", "https://api.deepseek.com"),
+      "https://api.deepseek.com/chat/completions"
     )
   })
 

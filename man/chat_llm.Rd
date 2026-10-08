@@ -41,7 +41,7 @@ A character string with the LLM's response text.
 This function sends a message to the LLM model and retrieves the result.
 }
 \examples{
-\donttest{
+\dontshow{if (nzchar(Sys.getenv("LLMJOIN_API_KEY"))) withAutoprint(\{ # examplesIf}
   chat_llm("tell a joke.")
-}
+\dontshow{\}) # examplesIf}
 }

@@ -1,7 +1,8 @@
 # llmjoin 0.3.1
 
 ## changes
-- Added DeepSeek as a first-class provider: `set_llm(provider = "deepseek")` defaults to `https://api.deepseek.com/v1/chat/completions` with Bearer authentication and the `deepseek-flash` model.
+- Added DeepSeek as a first-class provider: `set_llm(provider = "deepseek")` defaults to `https://api.deepseek.com/chat/completions` with Bearer authentication and the `deepseek-flash` model.
+- README now links the DeepSeek open platform so users can obtain an API key from the setup section.
 - Default models updated: OpenAI now defaults to `gpt-6-luna` and Gemini to `gemini-3.8-flash`.
 - `provider_parse()` now warns when the LLM reply is truncated — OpenAI/Gemini/DeepSeek `finish_reason == "length"`, Claude `stop_reason == "max_tokens"` — and still returns the parsed text. Increase `.max_tokens` and retry.
 - `parse_joint()` now reports keys the LLM never mapped: with `x_keys`/`y_keys` provided, keys absent from the parsed result raise one informational warning per side naming the column, the count and up to 5 sample values. Rows are never dropped by this feedback; actual `NA` keys never count as unmatched (the prompt tells the LLM to leave unmappable cells empty).
@@ -18,6 +19,7 @@
 - `chat_llm()` now accepts any non-empty `.message`: elements are coerced via `as.character()`, `NA` elements become blank lines, and a length > 1 vector is pasted into one newline-separated string before sending. Missing, NULL, zero-length or all-blank input raises an error naming `.message` with fix guidance (previously a length > 1 vector leaked an internal "condition has length > 1" error).
 - `build_joint()` (and therefore `llm_join()`) validates `key1`/`key2` up front: a misspelled key now errors naming the argument, the offending value and the available columns instead of the opaque "undefined columns selected"; passing a non-data.frame `x`/`y` also errors naming the argument. Validation runs before the LLM call.
 - README: the manual workflow example no longer uses the Windows-only `writeClipboard()`; the prompt prints to the console on all platforms.
+- Examples that need an API key are now guarded with `\examplesIf` conditions instead of bare `\donttest{}` blocks. `R CMD check --as-cran` executes `\donttest` examples, and these ones wrote a literal placeholder key into your `LLMJOIN.yml` and sent real requests to your configured provider. The guard is `nzchar(Sys.getenv("LLMJOIN_API_KEY"))`: the examples are skipped unless you set that variable, and the `set_llm()` example now reads the key from it, so running it deliberately can no longer overwrite your stored credential. Set `LLMJOIN_API_KEY` before `devtools::check()` to exercise them.
 
 # llmjoin 0.3.0
 

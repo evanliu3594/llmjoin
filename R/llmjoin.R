@@ -273,14 +273,12 @@ parse_joint <- function(llm_response, key1, key2, x_keys = NULL, y_keys = NULL) 
 #' @returns a 2-column data.frame mapping values from key1 to key2.
 #' @export
 #'
-#' @examples
-#' \donttest{
+#' @examplesIf nzchar(Sys.getenv("LLMJOIN_API_KEY"))
 #'   build_joint(
 #'     x = data.frame(x = c("01","02","04")),
 #'     y = data.frame(y = c("January","Feb","May")),
 #'     key1 = "x", key2 = "y"
 #'   )
-#' }
 build_joint <- function(x, y, key1, key2, ...) {
   if (!is.data.frame(x)) {
     stop(
@@ -314,13 +312,11 @@ build_joint <- function(x, y, key1, key2, ...) {
 #' @returns the fuzzy-joined data.frame
 #' @export
 #'
-#' @examples
-#' \donttest{
+#' @examplesIf nzchar(Sys.getenv("LLMJOIN_API_KEY"))
 #'   x <- data.frame(id = c("01", "02", "04"), value = c(10, 20, 40))
 #'   y <- data.frame(month = c("January", "Feb", "May"), amount = c(100, 200, 400))
 #'
 #'   llm_join(x, y, key1 = "id", key2 = "month")
-#' }
 llm_join <- function(x, y, key1, key2, ...) {
   joint <- build_joint(x, y, key1, key2, ...)
   result <- merge(x, joint, by = key1, all.x = TRUE)

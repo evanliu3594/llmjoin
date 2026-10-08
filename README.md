@@ -14,7 +14,7 @@ You can install the released version of llmjoin from [CRAN](https://cran.r-proje
 install.packages("llmjoin")
 ```
 
-Or install the development version from [GitHub](https://github.com/) with:
+Or install the development version from [GitHub](https://github.com/evanliu3594/llmjoin) with:
 ```R
 devtools::install_github("evanliu3594/llmjoin")
 ```
@@ -22,6 +22,8 @@ devtools::install_github("evanliu3594/llmjoin")
 ## Usage
 
 ### 1. setup your LLM services.
+
+You need an API key from your own provider first — for example, [apply for a DeepSeek API key](https://platform.deepseek.com).
 
 > Please note that all information is stored strictly locally in your system configuration (run `tools::R_user_dir("llmjoin", "config")` to see the full path), and is never uploaded or shared.
 ```R
@@ -47,7 +49,7 @@ set_llm(provider = "openai",
 ```
 ### 2. use LLM-JOIN
 
-> **Below examples used Deepseek-V4-Flash.**
+> **Below examples used `deepseek-flash`.**
 
 #### Example 1: Numbers ↔ Months matching
 
