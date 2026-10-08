@@ -13,8 +13,9 @@
 ## 项目定位与当前状态
 
 llmjoin:用 LLM 做数据框模糊连接(拼写变体、跨语言、精度差异),卖点是**依赖极简**
-(Imports: httr、jsonlite、config)。当前 0.3.1,待重提 CRAN(CRAN-SUBMISSION 最后记录
-0.3.0,2026-06-08)。测试红线见 P0.2。
+(Imports: httr、jsonlite、config)。当前 0.3.1:GitHub 已发布 tag/release,CRAN **尚未提交**
+(CRAN-SUBMISSION 最后记录 0.3.0,2026-06-08)。261008 本机 `devtools::check(cran = TRUE)`
+为 `Status: OK`,投稿前仍须按 §已知问题 3 重写 cran-comments.md。测试红线见 P0.2。
 
 ## 目录结构(要点;R/ 与 tests/ 明细见各自 AGENTS.md)
 
@@ -36,6 +37,7 @@ llmjoin:用 LLM 做数据框模糊连接(拼写变体、跨语言、精度差异
 | ④ | 版本管理 | AGENTS 体系(根 + `R/`、`tests/`)与 `handoff/` **纳入 git 追踪**;`.Rbuildignore` 维持排除,不进 R CMD 构建(261005 维护者拍板;历史记录的措辞中性化以维护者 261004 就地修订为先例) | 261005 |
 | ⑤ | 历史重写 | 261005 已对全历史执行痕迹清除重写并 force-push:b9b1c4b 起的提交 SHA 均已改变(映射见 handoff/261005_全量清除开发助手痕迹.md),旧记录中的 SHA 引用以该映射为准;归档于仓库外 bundle 与本地 `backup/` 分支,永不推送 | 261005 |
 | ⑥ | claude 字样范围 | provider 注册表与用户文档保留 claude 配置入口(provider 功能语境,口径③除外条款适用);261005 清除的仅为协作者身份痕迹,「provider 语境 claude 除名」问题就此关闭 | 261007 |
+| ⑦ | 不做托管免费端点 | 不提供包内默认可用的托管转发服务端(不建 server/、不持上游 key、不承诺第三方免费额度);新用户路径改为 README 指向服务商 key 申请页,需要凭据的示例用 `@examplesIf nzchar(Sys.getenv("LLMJOIN_API_KEY"))` 守卫。动机:托管端点要求维护者承担域名续费、证书续期、刷屏处置与宕机值守的无限期责任,且包内硬编码 URL 在 CRAN 发布后几乎不可更改;维护者 261008 拍板放弃(决策链见 handoff/261008_放弃托管端点并修示例守卫.md §3) | 261008 |
 
 ## P0 硬约束
 
@@ -125,15 +127,26 @@ handoff/261005_修复遗留问题5至8.md)。261006 完成 DeepSeek provider、�
 reasoning 请求体修复与 E1/E2 增强(见
 handoff/261006_默认模型与DeepSeek及E1E2.md)。剩余待办:
 
-1. 【搁置(261007 拍板)】默认模型(openai gpt-6-luna / gemini gemini-3.8-flash / deepseek
-   deepseek-flash)与 openai reasoning 请求体修复(`max_completion_tokens`、省略
-   temperature)未经真实 API 验证,测试全 mock;维护者暂无真实 key,冒烟搁置,
-   待真实使用出现 issue 再验证。
-2. 【已提交待响应(261007,工单 #4830894)】GitHub 服务端缓存:261007 实测 6 个旧
+1. 【部分核实(261008)】默认模型与端点路径的真实 API 验证仍未做。已按官方文档核实:
+   deepseek 模型实名 `deepseek-flash` 属实;`base_url` 已改为官方 curl 示例的
+   `https://api.deepseek.com`(去掉了 `/v1`),但**这条新路径未发过真实请求**。
+   openai gpt-6-luna / gemini gemini-3.8-flash 与 openai reasoning 请求体修复(`max_completion_tokens`、
+   省略 temperature)仍未验证。重启冒烟的方式见 §常用命令:设 `LLMJOIN_API_KEY`
+   后跑 `devtools::check(cran = TRUE)`,前提是先用 `set_llm()` 恢复本地配置。
+2. 【新增(261008)】四个需要凭据的示例(`set_llm` / `chat_llm` / `build_joint` /
+   `llm_join`)在 CRAN 检查机上永不执行——`@examplesIf` 守卫比 `\donttest` 更严。
+   审核人 2026-06 第 3 条要求换掉 `\dontrun` 的理由(隐藏 bug 不被发现)在此以新形式
+   回归:0.3.0 那次正是靠执行示例才发现 `llm_join` 里 `model` → `.model` 的参数名错误。
+   缓解:`joint_prompt()` 与 `parse_joint()` 两个不依赖 key 的示例仍是普通 `\examples{}`,
+   每次 check 都执行。
+3. 【待重写(261008)】`cran-comments.md` 现内容仍是 0.3.0 的发布摘要,未覆盖 DeepSeek
+   provider、`readr` 移除、防伪造校验、示例守卫四项;投稿前必须重写。
+4. 【已提交待响应(261007,工单 #4830894)】GitHub 服务端缓存:261007 实测 6 个旧
    提交 SHA 中 5 个已不可达,仅首变更提交 b9b1c4b 仍按 SHA 直链可访问(未 GC);
    工单经支持门户 AI 预检转人工提交(路径见 handoff/261007_支持工单提交.md),草稿
-   见 handoff/261007_GitHub缓存支持请求.md 附录;Support 回复后:执行则复测 6 个
-   SHA 并关闭本项,以非敏感数据为由拒绝则回退为等待服务端 GC。
+   见 handoff/261007_GitHub缓存支持请求.md 附录;截至 261008 12:00 无回复,按拍板
+   不重复开票。Support 回复后:执行则复测 6 个 SHA 并关闭本项,以非敏感数据为由
+   拒绝则回退为等待服务端 GC。
 
 ## 常用命令
 
@@ -142,9 +155,19 @@ Rscript -e "testthat::test_local('.')"          # 全量测试(从源码加载,�
 Rscript -e 'devtools::test_active_file("tests/testthat/test-parse_joint.R")'
 Rscript -e 'devtools::load_all(".")'            # 交互开发加载
 Rscript -e 'devtools::check()'                  # 完整 R CMD check
+Rscript -e 'devtools::check(cran = TRUE)'       # 投稿口径(= R CMD check --as-cran)
+LLMJOIN_API_KEY=<your-key> Rscript -e 'devtools::check(cran = TRUE)'   # 带 key 冒烟:四个受守卫的示例会真实执行
 Rscript -e 'devtools::document()'               # 生成 man/ 文档
 Rscript -e 'devtools::install()'                # 本地安装(保持与源码同步)
 ```
+
+**跑 check 前先清 locale 变量**:Git Bash 导出的 `LC_ALL` / `LC_CTYPE` 等 `C.UTF-8`
+值会让 Windows R 启动报错,被 check 记成假的 ERROR/WARNING。用
+`env -u LC_ALL -u LANG -u LC_CTYPE -u LC_COLLATE Rscript ...`。
+
+`--as-cran` **会执行示例**(含 `\donttest`,261008 实测确认),所以 §已拍板口径⑦ 的
+`@examplesIf` 守卫不得移除——否则会把维护者本地的 `LLMJOIN.yml` 覆盖成占位符,
+并向已配置的 provider 发出真实请求。
 
 ## 交接记录约定(handoff/)
 
