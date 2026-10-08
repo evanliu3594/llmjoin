@@ -25,7 +25,7 @@ devtools::install_github("evanliu3594/llmjoin")
 
 You need an API key from your own provider first — for example, [apply for a DeepSeek API key](https://platform.deepseek.com).
 
-> Please note that all information is stored strictly locally in your system configuration (run `tools::R_user_dir("llmjoin", "config")` to see the full path), and is never uploaded or shared.
+> Please note that all information is stored strictly locally in your system configuration, and is never uploaded or shared. Run `get_llm()` at any time to see the active provider, model, endpoint and config file path — the API key is masked, use `get_llm(show_key = TRUE)` to reveal it.
 ```R
 library(llmjoin)
 
@@ -46,6 +46,17 @@ set_llm(provider = "openai",
         url = "http://localhost:11434/v1/chat/completions",
         key = "your-api-key",
         model = "your-model")
+```
+
+Check what is currently configured with:
+```R
+get_llm()
+#> LLM config read from `~/.local/r/config/llmjoin/LLMJOIN.yml`.
+#>   Provider: openai
+#>   Model: gpt-6-luna
+#>   URL: https://api.openai.com/v1/chat/completions
+#>   Key: ****cdef
+#>   (pass show_key = TRUE to print the full key)
 ```
 ### 2. use LLM-JOIN
 

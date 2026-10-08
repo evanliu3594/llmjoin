@@ -15,7 +15,7 @@
 
 | 文件 | 内容(一句话) | 状态 |
 |---|---|---|
-| `connection.R` | `set_llm()` 配置读写 + `chat_llm()` 唯一 LLM 调用入口(`.message` 强转/拼接) | 现行 |
+| `connection.R` | `set_llm()` 写配置 / `get_llm()` 读配置(key 默认脱敏) / 私有 `.read_config()` 校验 / `chat_llm()` 唯一 LLM 调用入口(`.message` 强转、经 `.read_config()` 取明文 key) | 现行 |
 | `providers.R` | provider 注册表(openai/claude/gemini/deepseek)+ headers/body/parse/url 四函数 | 现行 |
 | `llmjoin.R` | join 管线:tbl2md → joint_prompt → build_joint → parse_joint → llm_join | 现行 |
 | `utils.R` | `%||%`、globalVariables、NAMESPACE imports | 现行 |

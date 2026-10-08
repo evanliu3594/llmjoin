@@ -13,9 +13,11 @@
 ## 项目定位与当前状态
 
 llmjoin:用 LLM 做数据框模糊连接(拼写变体、跨语言、精度差异),卖点是**依赖极简**
-(Imports: httr、jsonlite、config)。当前 0.3.1:GitHub 已发布 tag/release,CRAN **尚未提交**
-(CRAN-SUBMISSION 最后记录 0.3.0,2026-06-08)。261008 本机 `devtools::check(cran = TRUE)`
-为 `Status: OK`,投稿前仍须按 §已知问题 3 重写 cran-comments.md。测试红线见 P0.2。
+(Imports: httr、jsonlite、config)。当前 0.3.2:0.3.1 及之前已有 GitHub tag/release,
+0.3.2 的 tag 由 261008 会话打上(release 待维护者创建);CRAN **尚未提交**
+(CRAN-SUBMISSION 最后记录 0.3.0,2026-06-08)。261008 以 0.3.2 内容跑本机
+`devtools::check(cran = TRUE)` 为 `Status: OK`(0 errors / 0 warnings / 0 notes),
+投稿前仍须按 §已知问题 3 重写 cran-comments.md。测试红线见 P0.2。
 
 ## 目录结构(要点;R/ 与 tests/ 明细见各自 AGENTS.md)
 
@@ -25,6 +27,7 @@ llmjoin:用 LLM 做数据框模糊连接(拼写变体、跨语言、精度差异
 | `tests/` | testthat 测试 | `tests/AGENTS.md` |
 | `man/` | roxygen 生成文档,不手改 | R/ 源文件内嵌 roxygen 注释 |
 | `handoff/` | 交接记录,兼任项目时间线 | 根 §交接记录约定 |
+| `docs/superpowers/plans/` | 单次特性的实施计划(GWT 场景矩阵);`.Rbuildignore` 排除,不进 R CMD 构建 | 对应版本的 `handoff/` 记录 |
 | `DESCRIPTION` / `NAMESPACE` / `NEWS.md` / `README.md` | 包元数据 / 导出表 / 用户可见变更 / 使用说明 | — |
 
 ## 已拍板口径(用户确认,勿再改)
@@ -37,7 +40,8 @@ llmjoin:用 LLM 做数据框模糊连接(拼写变体、跨语言、精度差异
 | ④ | 版本管理 | AGENTS 体系(根 + `R/`、`tests/`)与 `handoff/` **纳入 git 追踪**;`.Rbuildignore` 维持排除,不进 R CMD 构建(261005 维护者拍板;历史记录的措辞中性化以维护者 261004 就地修订为先例) | 261005 |
 | ⑤ | 历史重写 | 261005 已对全历史执行痕迹清除重写并 force-push:b9b1c4b 起的提交 SHA 均已改变(映射见 handoff/261005_全量清除开发助手痕迹.md),旧记录中的 SHA 引用以该映射为准;归档于仓库外 bundle 与本地 `backup/` 分支,永不推送 | 261005 |
 | ⑥ | claude 字样范围 | provider 注册表与用户文档保留 claude 配置入口(provider 功能语境,口径③除外条款适用);261005 清除的仅为协作者身份痕迹,「provider 语境 claude 除名」问题就此关闭 | 261007 |
-| ⑦ | 不做托管免费端点 | 不提供包内默认可用的托管转发服务端(不建 server/、不持上游 key、不承诺第三方免费额度);新用户路径改为 README 指向服务商 key 申请页,需要凭据的示例用 `@examplesIf nzchar(Sys.getenv("LLMJOIN_API_KEY"))` 守卫。动机:托管端点要求维护者承担域名续费、证书续期、刷屏处置与宕机值守的无限期责任,且包内硬编码 URL 在 CRAN 发布后几乎不可更改;维护者 261008 拍板放弃(决策链见 handoff/261008_放弃托管端点并修示例守卫.md §3) | 261008 |
+| ⑦ | 不做托管免费端点 | 不提供包内默认可用的托管转发服务端(不建 server/、不持上游 key、不承诺第三方免费额度);新用户路径改为 README 指向服务商 key 申请页,需要凭据的示例用 `@examplesIf nzchar(Sys.getenv("LLMJOIN_API_KEY"))` 守卫。动机:托管端点要求维护者承担域名续费、证书续期、刷屏处置与宕机值守的无限期责任,且包内硬编码 URL 在 CRAN 发布后几乎不可更改;维护者 261008 拍板放弃(决策链见 handoff/261008_示例守卫与DeepSeek端点修正与托管端点放弃.md §3;261008 二次会话修正本指针——原指向的 `261008_放弃托管端点并修示例守卫.md` 是同会话的未入库草稿) | 261008 |
+| ⑧ | 凭据显示口径 | `get_llm()` **默认脱敏** API key:`.mask_key()` 把空串显示为 `<empty>`、`nchar <= 8` 全遮为 `****`、更长的只露末 4 位;返回 list 的 `key` 与打印内容一致,取明文只能显式 `show_key = TRUE`。动机:控制台输出会进 `.Rhistory`、截屏和 CI 日志,默认打印明文等于把凭据外泄做成包的标准动作。请求路径不受影响——`chat_llm()` 始终用存储的明文 key,该行为由测试固定;维护者 261008 拍板 | 261008 |
 
 ## P0 硬约束
 
@@ -46,7 +50,7 @@ llmjoin:用 LLM 做数据框模糊连接(拼写变体、跨语言、精度差异
    - 新增依赖必须证明必要性并评估传递依赖成本;本包卖点是依赖极简(Imports: httr、jsonlite、config)。
    - 用户可见输出用 `message()` / `warning()` / `stop()`,禁止 `cat()`。
    - 严禁提交 API key、密钥或真实配置文件。
-2. **测试红线**:交付前 `testthat::test_local()` 必须全绿(当前基线:281 项断言,0 失败);测试不得依赖真实 LLM 服务,一律用 `local_mocked_bindings()` 打桩。
+2. **测试红线**:交付前 `testthat::test_local()` 必须全绿(当前基线:325 项断言,0 失败);测试不得依赖真实 LLM 服务,一律用 `local_mocked_bindings()` 打桩。
 3. **防伪造校验是安全特性**:`parse_joint()` 的 `x_keys` / `y_keys` 白名单过滤不得移除或弱化;`build_joint()` / `llm_join()` 必须默认传键值集合。
 4. **API 兼容**:导出函数的签名或语义变更必须记入 NEWS.md 当前版本段,并说明迁移方式。
 5. **base R 优先**:禁止引入 tidyverse / magrittr / readr;管道用 `|>`,匿名函数用 `\(x)`,字符串处理优先 base 函数。
@@ -80,12 +84,18 @@ llmjoin:用 LLM 做数据框模糊连接(拼写变体、跨语言、精度差异
 - 提交信息用英文祈使句,前缀 `feat:` / `fix:` / `docs:` / `chore:`。
 - 交接记录与用户沟通:直白朴素、先结论后证据,证据带可核对数值;未验证的结论注明"未验证"。
 
-## 架构(2026-10-04 与 v0.3.1 代码同步)
+## 架构(2026-10-08 与 v0.3.2 代码同步;2026-10-04 曾与 v0.3.1 同步)
 
 - **配置层** `R/connection.R`:`set_llm()` 写 YAML 配置(单引号转义为 `''`)到
-  `tools::R_user_dir("llmjoin", "config")/LLMJOIN.yml`;`chat_llm(.message, .model,
-  .temperature, .max_tokens, .timeout, .verbose)` 是唯一 LLM 调用入口,每次调用读取并校验配置
-  (URL/key/provider 必填,无缓存验证);`.message` 接受任意可强转输入,元素 as.character 后
+  `tools::R_user_dir("llmjoin", "config")/LLMJOIN.yml`;`get_llm(show_key = FALSE)`
+  读回同一份配置,用 `message()` 报告 provider / model / URL / 配置文件路径,并返回
+  不可见 list(`provider` / `url` / `model` / `key` / `config_path`)。key 默认经内部
+  `.mask_key()` 脱敏:空串 → `<empty>`、`nchar <= 8` → `****`、更长 → `****` + 末 4 位;
+  返回值与打印内容一致,取明文必须显式 `show_key = TRUE`(脱敏是安全特性,不得弱化)。
+  `chat_llm(.message, .model, .temperature, .max_tokens, .timeout, .verbose)` 是唯一
+  LLM 调用入口,经私有 `.read_config()` 读取并校验配置(文件缺失 → YAML 非法 → 缺 URL/key
+  → provider 未知,四类错误顺序与文案沿用 0.3.1,一字未改),请求路径始终用**明文** key;
+  `.message` 接受任意可强转输入,元素 as.character 后
   NA 置空、向量按换行 paste 成单串,missing/NULL/零长/全空白报错点名参数。
   默认 `.max_tokens = 30000`、`.timeout = 300`、
   `.temperature = 0`(越界自动截断并警告;openai gpt-5+/o 系模型不发 temperature,
@@ -133,14 +143,17 @@ handoff/261006_默认模型与DeepSeek及E1E2.md)。剩余待办:
    openai gpt-6-luna / gemini gemini-3.8-flash 与 openai reasoning 请求体修复(`max_completion_tokens`、
    省略 temperature)仍未验证。重启冒烟的方式见 §常用命令:设 `LLMJOIN_API_KEY`
    后跑 `devtools::check(cran = TRUE)`,前提是先用 `set_llm()` 恢复本地配置。
-2. 【新增(261008)】四个需要凭据的示例(`set_llm` / `chat_llm` / `build_joint` /
-   `llm_join`)在 CRAN 检查机上永不执行——`@examplesIf` 守卫比 `\donttest` 更严。
+2. 【新增(261008),0.3.2 增至五个】五个需要凭据或需要已有配置的示例(`set_llm` /
+   `chat_llm` / `build_joint` / `llm_join` / `get_llm`)在 CRAN 检查机上永不执行——
+   `@examplesIf` 守卫比 `\donttest` 更严。`get_llm()` 不读环境变量里的凭据,但无配置时
+   会报错,裸 `\examples{}` 会让 `R CMD check` 直接 ERROR,故沿用同一守卫(示例先 `set_llm()`)。
    审核人 2026-06 第 3 条要求换掉 `\dontrun` 的理由(隐藏 bug 不被发现)在此以新形式
    回归:0.3.0 那次正是靠执行示例才发现 `llm_join` 里 `model` → `.model` 的参数名错误。
    缓解:`joint_prompt()` 与 `parse_joint()` 两个不依赖 key 的示例仍是普通 `\examples{}`,
-   每次 check 都执行。
+   每次 check 都执行;`get_llm()` 的读取与脱敏行为另有 testthat 断言覆盖
+   (`tests/testthat/test-get_llm.R`),不依赖示例执行。
 3. 【待重写(261008)】`cran-comments.md` 现内容仍是 0.3.0 的发布摘要,未覆盖 DeepSeek
-   provider、`readr` 移除、防伪造校验、示例守卫四项;投稿前必须重写。
+   provider、`readr` 移除、防伪造校验、示例守卫、0.3.2 的 `get_llm()` 五项;投稿前必须重写。
 4. 【已提交待响应(261007,工单 #4830894)】GitHub 服务端缓存:261007 实测 6 个旧
    提交 SHA 中 5 个已不可达,仅首变更提交 b9b1c4b 仍按 SHA 直链可访问(未 GC);
    工单经支持门户 AI 预检转人工提交(路径见 handoff/261007_支持工单提交.md),草稿
@@ -156,7 +169,7 @@ Rscript -e 'devtools::test_active_file("tests/testthat/test-parse_joint.R")'
 Rscript -e 'devtools::load_all(".")'            # 交互开发加载
 Rscript -e 'devtools::check()'                  # 完整 R CMD check
 Rscript -e 'devtools::check(cran = TRUE)'       # 投稿口径(= R CMD check --as-cran)
-LLMJOIN_API_KEY=<your-key> Rscript -e 'devtools::check(cran = TRUE)'   # 带 key 冒烟:四个受守卫的示例会真实执行
+LLMJOIN_API_KEY=<your-key> Rscript -e 'devtools::check(cran = TRUE)'   # 带 key 冒烟:五个受守卫的示例会真实执行
 Rscript -e 'devtools::document()'               # 生成 man/ 文档
 Rscript -e 'devtools::install()'                # 本地安装(保持与源码同步)
 ```

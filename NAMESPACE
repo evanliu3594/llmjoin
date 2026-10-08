@@ -2,6 +2,7 @@
 
 export(build_joint)
 export(chat_llm)
+export(get_llm)
 export(joint_prompt)
 export(llm_join)
 export(parse_joint)

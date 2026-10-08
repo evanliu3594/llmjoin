@@ -1,3 +1,8 @@
+# llmjoin 0.3.2
+
+## changes
+- Added `get_llm()`: shows the configuration written by `set_llm()` — provider, model, endpoint and the config file path — without opening the YAML file. The API key is masked by default: keys longer than 8 characters show only their last 4, shorter keys show `****`, and a blank stored key shows `<empty>`. `get_llm(show_key = TRUE)` is the only way to print or return the full key, and the returned list carries exactly what was printed, so `get_llm()$key` cannot leak the credential into a log or a screenshot. `chat_llm()` still authenticates with the stored key as-is.
+
 # llmjoin 0.3.1
 
 ## changes
