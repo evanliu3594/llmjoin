@@ -233,6 +233,12 @@ chat_llm <- function(
 
   # Load and validate config
   cfg <- .read_config()
+  if (!nzchar(cfg$key)) {
+    stop(
+      "Config has an empty 'LLM_key' in ", cfg$config_path, ". ",
+      "Add your API key to that file, or use set_llm() to store a new one."
+    )
+  }
   provider <- cfg$provider
   model <- .model %||% cfg$model
   url <- cfg$url

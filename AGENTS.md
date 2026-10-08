@@ -50,7 +50,7 @@ llmjoin:用 LLM 做数据框模糊连接(拼写变体、跨语言、精度差异
    - 用户可见输出用 `message()` / `warning()` / `stop()`,禁止 `cat()`。
    - 严禁提交 API key、密钥或真实配置文件。
    - **包自身不得把明文凭据推到任何用户可见渠道**:`message()` / `warning()` / `stop()` 的文案只可含 provider / model / URL / 配置路径,不得含 `LLMJOIN_key` 的值;由 `tests/testthat/test-no_key_leak.R` 固定(该文件另含一条"检测器确实认得出明文"的正向对照,防止五条负向断言空过)。文档与示例教用户从环境变量传 key,不教字面量。
-2. **测试红线**:交付前 `testthat::test_local()` 必须全绿(当前基线:367 项断言,0 失败);测试不得依赖真实 LLM 服务,一律用 `local_mocked_bindings()` 打桩。
+2. **测试红线**:交付前 `testthat::test_local()` 必须全绿(当前基线:371 项断言,0 失败);测试不得依赖真实 LLM 服务,一律用 `local_mocked_bindings()` 打桩。
 3. **防伪造校验是安全特性**:`parse_joint()` 的 `x_keys` / `y_keys` 白名单过滤不得移除或弱化;`build_joint()` / `llm_join()` 必须默认传键值集合。
 4. **API 兼容**:导出函数的签名或语义变更必须记入 NEWS.md 当前版本段,并说明迁移方式。
 5. **base R 优先**:禁止引入 tidyverse / magrittr / readr;管道用 `|>`,匿名函数用 `\(x)`,字符串处理优先 base 函数。
@@ -97,7 +97,10 @@ llmjoin:用 LLM 做数据框模糊连接(拼写变体、跨语言、精度差异
   返回值与打印内容一致,取明文必须显式 `show_key = TRUE`(脱敏是安全特性,不得弱化)。
   `chat_llm(.message, .model, .temperature, .max_tokens, .timeout, .verbose)` 是唯一
   LLM 调用入口,经私有 `.read_config()` 读取并校验配置(文件缺失 → YAML 非法 → 缺 URL/key
-  → provider 未知,四类错误顺序与文案沿用 0.3.1,一字未改),请求路径始终用**明文** key;
+  → provider 未知,四类错误顺序与文案沿用 0.3.1,一字未改),随后**自己**再拦一道空串 key
+  (`LLM_key: ''` 会通过 `.read_config()` 的 `is.null` 检查,旧实现会带着空白凭据发请求、
+  把 provider 的鉴权错误当故障报出来;拦截放在 chat_llm 侧是因为 get_llm 要能显示 `<empty>` 而不报错);
+  请求路径始终用**明文** key;
   `.message` 接受任意可强转输入,元素 as.character 后
   NA 置空、向量按换行 paste 成单串,missing/NULL/零长/全空白报错点名参数。
   默认 `.max_tokens = 30000`、`.timeout = 300`、

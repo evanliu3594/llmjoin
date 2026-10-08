@@ -212,6 +212,43 @@ describe("chat_llm", {
       expect_match(err, "Use set_llm() to reconfigure.", fixed = TRUE)
     })
 
+    it("errors when the stored key is an empty string (never reaches the network)", {
+      # Given: a hand-edited config with LLM_key: '' — .read_config()'s is.null
+      #   guard lets an empty string through, so without the check chat_llm()
+      #   would send a request with a blank Authorization header and surface the
+      #   provider's 401 instead of the real problem
+      # When:  chat_llm(.message = "hi") runs with the HTTP layer stubbed
+      #   (POST records whether it was called)
+      # Then:  the error names the empty LLM_key and how to fix it, and POST
+      #   was never reached
+      cfg_path <- .local_config_dir()
+      dir.create(dirname(cfg_path), showWarnings = FALSE, recursive = TRUE)
+      writeLines(
+        paste0(
+          "default:\n  LLM_provider: 'openai'\n",
+          "  LLM_URL: 'https://api.openai.com/v1/chat/completions'\n",
+          "  LLM_key: ''\n  LLM_model: 'test-model'"
+        ),
+        cfg_path
+      )
+      called <- new.env()
+      fake <- structure(list(status_code = 200L), class = "response")
+      local_mocked_bindings(
+        POST = function(url, ...) {
+          called$ran <- TRUE
+          fake
+        },
+        content = function(x, ...) '{"choices":[{"message":{"content":"01,January"}}]}',
+        status_code = function(x) 200L,
+        .package = "httr"
+      )
+      err <- tryCatch(chat_llm(.message = "hi"), error = function(e) conditionMessage(e))
+      expect_match(err, "empty 'LLM_key'", fixed = TRUE)
+      expect_match(err, "LLMJOIN.yml", fixed = TRUE)
+      expect_match(err, "set_llm()", fixed = TRUE)
+      expect_false(isTRUE(called$ran))
+    })
+
   })
 
   describe("request path keeps the plaintext key (refactor guard)", {
