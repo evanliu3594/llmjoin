@@ -58,6 +58,19 @@ get_llm()
 #>   Key: ****cdef
 #>   (pass show_key = TRUE to print the full key)
 ```
+
+#### Keeping the key out of your history
+
+A key typed as a string literal is written verbatim into your `.Rhistory`, shows up in screenshots, and ends up in any script you commit. To keep it out of those places, store it in an environment variable and pass that instead:
+
+```R
+# ~/.Renviron  (or ./.Renviron in the project — R reads both at startup)
+# LLMJOIN_API_KEY=sk-your-real-key
+set_llm(provider = "openai", key = Sys.getenv("LLMJOIN_API_KEY"))
+```
+
+llmjoin itself never prints a stored key: `set_llm()` reports provider, model and URL only, `get_llm()` masks the key unless you pass `show_key = TRUE`, and request failures quote the endpoint but not the credential.
+
 ### 2. use LLM-JOIN
 
 > **Below examples used `deepseek-flash`.**

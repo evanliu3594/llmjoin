@@ -12,7 +12,10 @@ set_llm(provider = "openai", url = NULL, key = NULL, model = NULL)
 
 \item{url}{url to your LLM provider endpoint. If NULL, auto-set based on provider.}
 
-\item{key}{api-key of your service.}
+\item{key}{api-key of your service. Prefer passing it from the environment
+(\code{Sys.getenv("LLMJOIN_API_KEY")}) over a string literal if you want to
+keep it out of your \code{.Rhistory}; the package never prints the stored key
+back (see \code{\link{get_llm}()}, which masks it by default).}
 
 \item{model}{character, model name. If NULL, auto-set from provider default.}
 }

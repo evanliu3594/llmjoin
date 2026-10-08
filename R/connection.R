@@ -6,7 +6,10 @@
 #' @param provider character, LLM provider. One of "openai",
 #'   "claude", "gemini", "deepseek". Default "openai".
 #' @param url url to your LLM provider endpoint. If NULL, auto-set based on provider.
-#' @param key api-key of your service.
+#' @param key api-key of your service. Prefer passing it from the environment
+#'   (\code{Sys.getenv("LLMJOIN_API_KEY")}) over a string literal if you want to
+#'   keep it out of your \code{.Rhistory}; the package never prints the stored key
+#'   back (see \code{\link{get_llm}()}, which masks it by default).
 #' @param model character, model name. If NULL, auto-set from provider default.
 #'
 #' @returns NULL invisibly. Called for side effect of writing the config file.
@@ -27,8 +30,19 @@ set_llm <- function(provider = "openai", url = NULL, key = NULL, model = NULL) {
     )
   }
 
-  if (is.null(key) || !is.character(key) || key == "") {
-    stop("'key' must be provided")
+  if (
+    is.null(key) ||
+    !is.character(key) ||
+    length(key) != 1L ||
+    is.na(key) ||
+    !nzchar(key)
+  ) {
+    stop(
+      "'key' must be a single non-empty string. ",
+      "An empty value usually means an environment variable is unset: check ",
+      'nzchar(Sys.getenv("LLMJOIN_API_KEY")), and restart R so that .Renviron ',
+      "is read."
+    )
   }
 
   p <- .providers[[provider]]

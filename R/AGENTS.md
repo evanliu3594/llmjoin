@@ -15,12 +15,18 @@
 
 | 文件 | 内容(一句话) | 状态 |
 |---|---|---|
-| `connection.R` | `set_llm()` 写配置 / `get_llm()` 读配置(key 默认脱敏) / 私有 `.read_config()` 校验 / `chat_llm()` 唯一 LLM 调用入口(`.message` 强转、经 `.read_config()` 取明文 key) | 现行 |
+| `connection.R` | `set_llm()` 写配置(key 入参护栏) / `get_llm()` 读配置(key 默认脱敏) / 私有 `.read_config()` 校验 / `chat_llm()` 唯一 LLM 调用入口(`.message` 强转、经 `.read_config()` 取明文 key) | 现行 |
 | `providers.R` | provider 注册表(openai/claude/gemini/deepseek)+ headers/body/parse/url 四函数 | 现行 |
 | `llmjoin.R` | join 管线:tbl2md → joint_prompt → build_joint → parse_joint → llm_join | 现行 |
 | `utils.R` | `%||%`、globalVariables、NAMESPACE imports | 现行 |
 
 ## 本目录特有要点
+
+- **R/ 里的字符串字面量必须纯 ASCII**:`R CMD check --as-cran` 的
+  `checking code files for non-ASCII characters` 会把含 `—`/中文等字符的**代码/NAMESPACE**
+  判成 WARNING(portable packages 要求);**注释里的非 ASCII 是允许的**(261008 实测:
+  `R/llmjoin.R` 注释里的破折号历次 check 均 OK,而新写进 `stop()` 文案的破折号立刻报 WARNING)。
+  要非 ASCII 就用 `\uxxxx` 转义,或者把面向用户的英文文案改成 ASCII。
 
 - base R `merge()` 把 NA 键当字符串互相匹配(R 4.6.1 实测,261004 发现):涉及 NA 键值的
   代码与测试不得依赖"NA 行不连接"的假设。

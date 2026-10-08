@@ -844,3 +844,38 @@ GitHub Release 需网页端填 changelog，不由本代理创建；提醒用户�
 3. **Type consistency**：`.read_config()` 五字段（provider/url/key/model/config_path）
    在 Task 2 定义、Task 3 `get_llm()` 原样透传并只替换 `key`；`.mask_key()` 返回
    character(1)；`get_llm(show_key=)` 签名三处（实现、测试、NEWS/README/roxygen）一致。
+
+---
+
+## 追加：Task 7 — 输入侧凭据卫生（维护者 261008 追问后补入 0.3.2）
+
+**触发**：维护者指出「若输出要脱敏，`set_llm(key = "...")` 的明文输入同样暴露在 `.Rhistory` /
+截屏 / 脚本里」，并撤回 `v0.3.2` tag 要求先补这一层。
+
+**结论（不对称，写死）**：包能负责的是**自己不把明文凭据推到不可控渠道**；用户把 key 敲成字面量
+而进入 `.Rhistory`，包无法代劳遮蔽——只能改**获取渠道**。所以本轮做文档 + 护栏，不做 `ask_key()`。
+
+**交付**（不动 API，不加函数）：
+- `tests/testthat/test-no_key_leak.R` — 六条场景（N1–N5 + 一条正向对照）。
+- `README.md` 新增「Keeping the key out of your history」段：`~/.Renviron` + `Sys.getenv("LLMJOIN_API_KEY")`。
+- `set_llm()` 的 `@param key` 加同一指引；`NEWS.md` 0.3.2 补一条；根 `AGENTS.md` P0.1 加硬约束、
+  口径⑧ 补输入侧边界；`tests/AGENTS.md` 加清单一行与两条测试纪律。
+
+**场景矩阵（追加）**
+
+| # | Given | When | Then |
+|---|---|---|---|
+| N1 | `set_llm(key=<19字符夹具>)` | 收集其全部 message | 不含明文 key；provider / model / URL 三项在场（证明通道没哑） |
+| N2 | 已配置，`httr::POST` 抛连接错误 | `chat_llm("hi")` | 错误文本含 `Failed to connect` 与 `Model: test-model`，不含 key |
+| N3 | 已配置，响应 401 | `chat_llm("hi")` | 含 `API request failed with status 401` 与上游 `Invalid Authentication`，不含 key |
+| N4 | 已配置，200 且响应体非 JSON，`.verbose = TRUE` | `chat_llm("hi")` | 含 `Failed to parse response` 与原文 `gateway returned plain text`，不含 key |
+| N5 | 已配置，正常打桩往返，`.verbose = TRUE` | `chat_llm("hi")` | 含两条过程消息，不含 key |
+| N6 | `get_llm(show_key = TRUE)` | 同一 collector 收集 | **含**明文 key —— 正向对照，证明 N1–N5 的"不该出现"不是空过 |
+
+**两条踩过的坑（已写进 `tests/AGENTS.md`）**
+1. 把 `local_mocked_bindings()` 包进 helper 会让 teardown 绑在 helper 帧上，helper 一返回
+   mock 就撤掉，随后 `httr::POST` 会**打真实请求**。必须写在 `it()` 体内。
+2. 五条负向断言本身不可信——collector 坏掉时全部空过。必须配一条正向对照（N6）。
+
+**未做（登记为候选，均需先探针）**：`ask_key()` 隐藏输入（`getPasswd()` 在 RStudio 控制台的
+可用性未实测）；`LLMJOIN.yml` 写后 `Sys.chmod(0600)`（Windows 上 chmod 只切只读位，效果未实测）。

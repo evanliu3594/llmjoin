@@ -41,7 +41,7 @@ llmjoin:用 LLM 做数据框模糊连接(拼写变体、跨语言、精度差异
 | ⑤ | 历史重写 | 261005 已对全历史执行痕迹清除重写并 force-push:b9b1c4b 起的提交 SHA 均已改变(映射见 handoff/261005_全量清除开发助手痕迹.md),旧记录中的 SHA 引用以该映射为准;归档于仓库外 bundle 与本地 `backup/` 分支,永不推送 | 261005 |
 | ⑥ | claude 字样范围 | provider 注册表与用户文档保留 claude 配置入口(provider 功能语境,口径③除外条款适用);261005 清除的仅为协作者身份痕迹,「provider 语境 claude 除名」问题就此关闭 | 261007 |
 | ⑦ | 不做托管免费端点 | 不提供包内默认可用的托管转发服务端(不建 server/、不持上游 key、不承诺第三方免费额度);新用户路径改为 README 指向服务商 key 申请页,需要凭据的示例用 `@examplesIf nzchar(Sys.getenv("LLMJOIN_API_KEY"))` 守卫。动机:托管端点要求维护者承担域名续费、证书续期、刷屏处置与宕机值守的无限期责任,且包内硬编码 URL 在 CRAN 发布后几乎不可更改;维护者 261008 拍板放弃(决策链见 handoff/261008_示例守卫与DeepSeek端点修正与托管端点放弃.md §3;261008 二次会话修正本指针——原指向的 `261008_放弃托管端点并修示例守卫.md` 是同会话的未入库草稿) | 261008 |
-| ⑧ | 凭据显示口径 | `get_llm()` **默认脱敏** API key:`.mask_key()` 把空串显示为 `<empty>`、`nchar <= 8` 全遮为 `****`、更长的只露末 4 位;返回 list 的 `key` 与打印内容一致,取明文只能显式 `show_key = TRUE`。动机:控制台输出会进 `.Rhistory`、截屏和 CI 日志,默认打印明文等于把凭据外泄做成包的标准动作。请求路径不受影响——`chat_llm()` 始终用存储的明文 key,该行为由测试固定;维护者 261008 拍板 | 261008 |
+| ⑧ | 凭据显示口径 | `get_llm()` **默认脱敏** API key:`.mask_key()` 把空串显示为 `<empty>`、`nchar <= 8` 全遮为 `****`、更长的只露末 4 位;返回 list 的 `key` 与打印内容一致,取明文只能显式 `show_key = TRUE`。动机:控制台输出会进 `.Rhistory`、截屏和 CI 日志,默认打印明文等于把凭据外泄做成包的标准动作。请求路径不受影响——`chat_llm()` 始终用存储的明文 key,该行为由测试固定;维护者 261008 拍板。**输入侧边界**(同轮追问的结论):脱敏原则不对称——包管得住的是"自己不把明文凭据推到不可控渠道"(已入 P0.1),管不住"用户在控制台敲字面量因而进了 `.Rhistory`",那只能改获取渠道,故 README 与 `set_llm()` 文档推荐 `Sys.getenv("LLMJOIN_API_KEY")`。`ask_key()` 隐藏输入助手(依赖 `getPasswd()`,RStudio 控制台有已知限制)与配置文件 `Sys.chmod(0600)`(Windows 上只切只读位)**两项均未实测**,将来要做先出探针再写码 | 261008 |
 
 ## P0 硬约束
 
@@ -50,7 +50,8 @@ llmjoin:用 LLM 做数据框模糊连接(拼写变体、跨语言、精度差异
    - 新增依赖必须证明必要性并评估传递依赖成本;本包卖点是依赖极简(Imports: httr、jsonlite、config)。
    - 用户可见输出用 `message()` / `warning()` / `stop()`,禁止 `cat()`。
    - 严禁提交 API key、密钥或真实配置文件。
-2. **测试红线**:交付前 `testthat::test_local()` 必须全绿(当前基线:325 项断言,0 失败);测试不得依赖真实 LLM 服务,一律用 `local_mocked_bindings()` 打桩。
+   - **包自身不得把明文凭据推到任何用户可见渠道**:`message()` / `warning()` / `stop()` 的文案只可含 provider / model / URL / 配置路径,不得含 `LLMJOIN_key` 的值;由 `tests/testthat/test-no_key_leak.R` 固定(该文件另含一条"检测器确实认得出明文"的正向对照,防止五条负向断言空过)。文档与示例教用户从环境变量传 key,不教字面量。
+2. **测试红线**:交付前 `testthat::test_local()` 必须全绿(当前基线:367 项断言,0 失败);测试不得依赖真实 LLM 服务,一律用 `local_mocked_bindings()` 打桩。
 3. **防伪造校验是安全特性**:`parse_joint()` 的 `x_keys` / `y_keys` 白名单过滤不得移除或弱化;`build_joint()` / `llm_join()` 必须默认传键值集合。
 4. **API 兼容**:导出函数的签名或语义变更必须记入 NEWS.md 当前版本段,并说明迁移方式。
 5. **base R 优先**:禁止引入 tidyverse / magrittr / readr;管道用 `|>`,匿名函数用 `\(x)`,字符串处理优先 base 函数。
@@ -87,7 +88,10 @@ llmjoin:用 LLM 做数据框模糊连接(拼写变体、跨语言、精度差异
 ## 架构(2026-10-08 与 v0.3.2 代码同步;2026-10-04 曾与 v0.3.1 同步)
 
 - **配置层** `R/connection.R`:`set_llm()` 写 YAML 配置(单引号转义为 `''`)到
-  `tools::R_user_dir("llmjoin", "config")/LLMJOIN.yml`;`get_llm(show_key = FALSE)`
+  `tools::R_user_dir("llmjoin", "config")/LLMJOIN.yml`;`key` 入参护栏把 missing / NULL /
+  空串 / 零长 / 长度 > 1 / NA / 非字符统一成一条点名参数并给出检查方法的错误(旧实现会漏出
+  `condition has length > 1` 这类内部错误);校验顺序 provider → key → url → model 未变。
+  `get_llm(show_key = FALSE)`
   读回同一份配置,用 `message()` 报告 provider / model / URL / 配置文件路径,并返回
   不可见 list(`provider` / `url` / `model` / `key` / `config_path`)。key 默认经内部
   `.mask_key()` 脱敏:空串 → `<empty>`、`nchar <= 8` → `****`、更长 → `****` + 末 4 位;
